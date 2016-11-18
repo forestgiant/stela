@@ -3,35 +3,37 @@ syntax = "proto3";
 package stela;
 
 service Stela {
-    rpc Connect(Client) returns (stream Service) {}
-    rpc Subscribe(SubscribeRequest) returns (Empty) {}
-    rpc Register(Service) returns (Empty) {}
+    rpc Connect(ConnectRequest) returns (stream ServiceMessage) {}
+    rpc Subscribe(SubscribeRequest) returns (SubscribeResponse) {}
+    rpc Register(ServiceMessage) returns (RegisteResponse) {}
     rpc Discover(DiscoverRequest) returns (DiscoverResponse) {}
-    rpc DiscoverOne(DiscoverRequest) returns (Service) {}
+    rpc DiscoverOne(DiscoverRequest) returns (ServiceMessage) {}
 }
 
-message Empty{}
+message SubscribeResponse{}
 
-message Service {
-    required string name = 1;
-    required string hostname = 2;
-    required string address = 3;
-    required int32 port = 4;
+message RegisteResponse{}
+
+message ServiceMessage {
+    string name = 1;
+    string hostname = 2;
+    string address = 3;
+    int32 port = 4;
     int32 priority = 5;
 }
 
 message SubscribeRequest {
-    required string service_name = 1;
+     string service_name = 1;
 }
 
 message DiscoverRequest {
-    required string service_name = 1;
+     string service_name = 1;
 }
 
 message DiscoverResponse {
-    repeated Service services = 1;
+    repeated ServiceMessage services = 1;
 }
 
-message Client {
-    required string uuid = 1;
+message ConnectRequest {
+    string client_uuid = 1;
 }

@@ -20,10 +20,12 @@ import (
 
 // MapStore implements the Store interface creating an in memory map of stela.Services
 type MapStore struct {
-	services      map[string][]stela.Service // Map of service names that holds a slice of services
-	subscriber    map[string][]*stela.Client
-	mu            *sync.RWMutex // Mutex used to lock services map
-	muSubscriber  *sync.RWMutex // Mutex used to lock subscriber map
+	services      map[string][]stela.Service // Map of service names that holds a slice of registered services
+	clients       []*stela.Client
+	subscribers   map[string][]*stela.Client // Store clients that subscribe to a service name
+	muServices    *sync.RWMutex              // Mutex used to lock services map
+	muSubscribers *sync.RWMutex              // Mutex used to lock subscriber map
+	muClients     *sync.RWMutex              // Mutex used to lock client slice
 	peerStore     raft.PeerStore
 	raftDir       string
 	raftTransport raft.StreamLayer
@@ -87,9 +89,14 @@ func (m *MapStore) init() {
 	if m.services == nil {
 		m.services = make(map[string][]stela.Service)
 	}
-
-	if m.mu == nil {
-		m.mu = new(sync.RWMutex)
+	if m.muServices == nil {
+		m.muServices = new(sync.RWMutex)
+	}
+	if m.muSubscribers == nil {
+		m.muSubscribers = new(sync.RWMutex)
+	}
+	if m.muClients == nil {
+		m.muClients = new(sync.RWMutex)
 	}
 }
 
@@ -113,14 +120,14 @@ func (m *MapStore) Register(s *stela.Service) error {
 	s.Priority = 0
 
 	// Add service to the beginning of the services map since it's new
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.muServices.Lock()
+	defer m.muServices.Unlock()
 	m.services[s.Name] = append([]stela.Service{*s}, m.services[s.Name]...) // Prepend new service
 
 	// Let subscribers know about new service
-	for _, c := range m.subscriber[s.Name] {
+	for _, c := range m.subscribers[s.Name] {
 		s.Action = stela.RegisterAction
-		c.Notify(*s)
+		c.Notify(s)
 	}
 
 	return nil
@@ -129,21 +136,21 @@ func (m *MapStore) Register(s *stela.Service) error {
 // Deregister removes a service from the map and notifies all client subscribers
 func (m *MapStore) Deregister(s *stela.Service) error {
 	// Notify clients that a new service is deregistered (for service name)
-	for _, c := range m.subscriber[s.Name] {
+	for _, c := range m.subscribers[s.Name] {
 		s.Action = stela.DeregisterAction
-		c.Notify(*s)
+		c.Notify(s)
 	}
 
 	return nil
 }
 
 func (m *MapStore) initSubscribe() {
-	if m.subscriber == nil {
-		m.subscriber = make(map[string][]*stela.Client)
+	if m.subscribers == nil {
+		m.subscribers = make(map[string][]*stela.Client)
 	}
 
-	if m.muSubscriber == nil {
-		m.muSubscriber = &sync.RWMutex{}
+	if m.muSubscribers == nil {
+		m.muSubscribers = &sync.RWMutex{}
 	}
 }
 
@@ -152,9 +159,9 @@ func (m *MapStore) Subscribe(serviceName string, c *stela.Client) error {
 	m.initSubscribe()
 
 	// Add client to list of subscribers
-	m.muSubscriber.Lock()
-	defer m.muSubscriber.Unlock()
-	m.subscriber[serviceName] = append(m.subscriber[serviceName], c)
+	m.muSubscribers.Lock()
+	defer m.muSubscribers.Unlock()
+	m.subscribers[serviceName] = append(m.subscribers[serviceName], c)
 
 	return nil
 }
@@ -168,10 +175,10 @@ func (m *MapStore) Unsubscribe(serviceName string, c *stela.Client) error {
 	m.initSubscribe()
 
 	// Remove client to list of subscribers
-	m.muSubscriber.Lock()
-	defer m.muSubscriber.Unlock()
-	subscribers := m.subscriber[serviceName]
-	for i, rc := range m.subscriber[serviceName] {
+	m.muSubscribers.Lock()
+	defer m.muSubscribers.Unlock()
+	subscribers := m.subscribers[serviceName]
+	for i, rc := range m.subscribers[serviceName] {
 		// Make sure the client is registered
 		if c == rc {
 			// Remove it from the subscriber slice
@@ -205,9 +212,80 @@ func (m *MapStore) Remove(addr string) error {
 	return nil
 }
 
+// Subscribers returns a slice of stela.Clients from a service name
+func (m *MapStore) Subscribers(serviceName string) []*stela.Client {
+	return m.subscribers[serviceName]
+}
+
+// AddClient adds to client slice m.clients
+func (m *MapStore) AddClient(c *stela.Client) {
+	m.init()
+	m.muClients.Lock()
+	defer m.muClients.Unlock()
+	m.clients = append(m.clients, c)
+}
+
+// RemoveClient removes client from slice m.clients, services it registered and any subscriptions
+func (m *MapStore) RemoveClient(c *stela.Client) {
+	m.init()
+	m.muClients.Lock()
+	defer m.muClients.Unlock()
+	for i, rc := range m.clients {
+		if rc == c {
+			m.clients = append(m.clients[:i], m.clients[i+1:]...)
+			return
+		}
+	}
+
+	// Remove any services the client registered
+	for k, v := range m.services {
+		// Remove any services that the client registered
+		for i, s := range v {
+			if s.Client == c {
+				// Remove from slice
+				v = append(v[:i], v[i+1:]...)
+			}
+		}
+
+		// If that was the last service in the slice delete the key
+		if len(v) == 0 {
+			delete(m.services, k)
+		}
+	}
+
+	// Remove client from Subscribers
+	for k, v := range m.subscribers {
+		for i, rc := range v {
+			if rc == c {
+				// Remove from slice
+				v = append(v[:i], v[i+1:]...)
+			}
+		}
+
+		// If that was the last client subscribed delete the key
+		if len(v) == 0 {
+			delete(m.subscribers, k)
+		}
+	}
+}
+
+// Client returns a client from m.clients based on uuid
+func (m *MapStore) Client(uuid string) (*stela.Client, error) {
+	m.init()
+	m.muClients.Lock()
+	defer m.muClients.Unlock()
+	for _, c := range m.clients {
+		if c.UUID == uuid {
+			return c, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Couldn't find a client from uuid: %s", uuid)
+}
+
 func (m *MapStore) hasService(s *stela.Service) bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.muServices.Lock()
+	defer m.muServices.Unlock()
 	for _, rs := range m.services[s.Name] {
 		if s.Equal(&rs) {
 			return true // service is already a registered
@@ -220,11 +298,11 @@ func (m *MapStore) hasService(s *stela.Service) bool {
 // TODO remove addingService and make sure to prepend to service map
 func (m *MapStore) rotateServices(serviceName string) error {
 	// Use length of all services to modulate priority
-	mod := len(m.services[serviceName])
+	mod := int32(len(m.services[serviceName]))
 
 	// Now update all the Priorities
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.muServices.Lock()
+	defer m.muServices.Unlock()
 	for i, s := range m.services[serviceName] {
 		// Update SRV priority
 		m.services[serviceName][i].Priority = (s.Priority + 1) % mod

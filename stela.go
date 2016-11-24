@@ -27,13 +27,14 @@ const (
 // Service used in request/response and
 // storing RR in boltdb
 type Service struct {
-	Name         string `json:"name,omitepty"`
-	Target       string `json:"target,omitempty"`
-	Address      string `json:"address,omitempty"`
-	Port         int    `json:"port,omitempty"`
-	Priority     int    `json:"priority,omitempty"`
-	Timeout      int    `json:"timeout,omitempty"` // The length of time, in milliseconds, before a service is deregistered
-	Action       int
+	Name         string
+	Target       string
+	Address      string
+	Port         int32
+	Priority     int32
+	Timeout      int32 // The length of time, in milliseconds, before a service is deregistered
+	Action       int32
+	Client       *Client // Store reference to the client that registered the service
 	registerCh   chan struct{}
 	deregisterCh chan struct{}
 	stopped      bool
@@ -154,23 +155,24 @@ func (s *Service) StopRegistering() {
 
 // Client struct holds all the information about a client registering a service
 type Client struct {
-	Address     string       // IPv4 address
-	subscribeCh chan Service // Used to send changes in services
+	Address     string // IPv4 address
+	UUID        string
+	subscribeCh chan *Service // Used to send changes in services
 }
 
 // SubscribeCh returns a channel of Services that is sent a service when one is removed or added
-func (c *Client) SubscribeCh() <-chan Service {
+func (c *Client) SubscribeCh() <-chan *Service {
 	if c.subscribeCh == nil {
-		c.subscribeCh = make(chan Service)
+		c.subscribeCh = make(chan *Service)
 	}
 
 	return c.subscribeCh
 }
 
 // Notify sends a service to the client's subscribeCh
-func (c *Client) Notify(s Service) {
+func (c *Client) Notify(s *Service) {
 	if c.subscribeCh == nil {
-		c.subscribeCh = make(chan Service)
+		c.subscribeCh = make(chan *Service)
 	}
 
 	// Notify the client of the new service without blocking

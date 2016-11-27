@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -31,6 +32,13 @@ type MapStore struct {
 	raftTransport raft.StreamLayer
 	raft          *raft.Raft
 }
+
+// byPriority is a sort interface to sort []srvWithKey slices
+type byPriority []stela.Service
+
+func (s byPriority) Len() int           { return len(s) }
+func (s byPriority) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s byPriority) Less(i, j int) bool { return s[i].Priority < s[j].Priority }
 
 // Open initiates raft
 func (m *MapStore) Open(enableSingle bool) error {
@@ -134,14 +142,27 @@ func (m *MapStore) Register(s *stela.Service) error {
 }
 
 // Deregister removes a service from the map and notifies all client subscribers
-func (m *MapStore) Deregister(s *stela.Service) error {
+func (m *MapStore) Deregister(s *stela.Service) {
 	// Notify clients that a new service is deregistered (for service name)
 	for _, c := range m.subscribers[s.Name] {
 		s.Action = stela.DeregisterAction
 		c.Notify(s)
 	}
 
-	return nil
+	// Remove service from services map
+	for k, v := range m.services {
+		for i, rs := range v {
+			if rs.Equal(s) {
+				// Remove from slice
+				v = append(v[:i], v[i+1:]...)
+			}
+		}
+
+		// If that was the last service in the slice delete the key
+		if len(v) == 0 {
+			delete(m.services, k)
+		}
+	}
 }
 
 func (m *MapStore) initSubscribe() {
@@ -191,15 +212,32 @@ func (m *MapStore) Unsubscribe(serviceName string, c *stela.Client) error {
 }
 
 // Discover finds all services registered under a serviceName
-func (m *MapStore) Discover(serviceName string) ([]*stela.Service, error) {
-	// Subscribe client to serviceName
+func (m *MapStore) Discover(serviceName string) ([]stela.Service, error) {
+	services := m.services[serviceName]
+	if len(services) == 0 {
+		return nil, fmt.Errorf("No services discovered with the service name: %s", serviceName)
+	}
 
-	return nil, nil
+	return m.services[serviceName], nil
 }
 
 // DiscoverOne returns only one of the services registered under a serviceName
 func (m *MapStore) DiscoverOne(serviceName string) (*stela.Service, error) {
-	return nil, nil
+	services, err := m.Discover(serviceName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get Service with lowest priority
+	sort.Sort(byPriority(services))
+
+	// Store the service with the lowest priority
+	s := services[0]
+
+	// Rotate services
+	m.rotateServices(serviceName)
+
+	return &s, nil
 }
 
 // Join the mapstore's raft
@@ -354,7 +392,7 @@ const (
 )
 
 type fsmDiscoverResponse struct {
-	results []*stela.Service
+	results []stela.Service
 	error   error
 }
 
@@ -383,8 +421,8 @@ func (m *MapStore) Apply(l *raft.Log) interface{} {
 		err := m.Register(c.Service)
 		return &fsmResponse{error: err}
 	case deregisterOperation:
-		err := m.Deregister(c.Service)
-		return &fsmResponse{error: err}
+		m.Deregister(c.Service)
+		return &fsmResponse{error: nil}
 	case discoverOperation:
 		svcResponse, err := m.Discover(c.Service.Name)
 		return &fsmDiscoverResponse{results: svcResponse, error: err}

@@ -156,7 +156,7 @@ func (s *Service) StopRegistering() {
 // Client struct holds all the information about a client registering a service
 type Client struct {
 	Address     string // IPv4 address
-	UUID        string
+	ID          string
 	subscribeCh chan *Service // Used to send changes in services
 }
 

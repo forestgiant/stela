@@ -13,14 +13,15 @@ type Server struct {
 	Store store.Store
 }
 
-// Connect a stela client to a stream of possible subscriptions. Uses the client uuid in to keep track
+// Connect a stela client to a stream of possible subscriptions. Uses the client id in to keep track
 // of services and subscriptions it registers
 func (s *Server) Connect(cr *stela.ConnectRequest, stream stela.Stela_ConnectServer) error {
 	ctx := stream.Context()
 
 	// Add client to the store
 	c := &stela.Client{}
-	c.UUID = cr.ClientUuid
+	c.ID = cr.ClientId
+	c.Address = cr.ClientAddress
 	s.Store.AddClient(c)
 
 	// Send service to clients on interval for simiulation
@@ -49,7 +50,7 @@ func (s *Server) Connect(cr *stela.ConnectRequest, stream stela.Stela_ConnectSer
 // Subscribe a client to a service name.
 func (s *Server) Subscribe(ctx context.Context, req *stela.SubscribeRequest) (*stela.SubscribeResponse, error) {
 	// Look up client that sent the request
-	c := s.Store.Client(req.ClientUuid)
+	c := s.Store.Client(req.ClientId)
 	if c == nil {
 		return nil, grpc.Errorf(codes.Aborted, "Can't subscribe with a client that hasn't connected")
 	}
@@ -63,7 +64,7 @@ func (s *Server) Subscribe(ctx context.Context, req *stela.SubscribeRequest) (*s
 // Register a service to a client
 func (s *Server) Register(ctx context.Context, req *stela.RegisterRequest) (*stela.RegisterResponse, error) {
 	// Look up client that sent the request
-	c := s.Store.Client(req.ClientUuid)
+	c := s.Store.Client(req.ClientId)
 	if c == nil {
 		return nil, grpc.Errorf(codes.Aborted, "Can't register with a client that hasn't connected")
 	}

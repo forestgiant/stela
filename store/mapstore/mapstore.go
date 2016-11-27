@@ -225,7 +225,7 @@ func (m *MapStore) AddClient(c *stela.Client) {
 	m.clients = append(m.clients, c)
 }
 
-// RemoveClient removes client from slice m.clients, services it registered and any subscriptions
+// RemoveClient removes client from the slice m.clients, services it registered and any subscriptions
 func (m *MapStore) RemoveClient(c *stela.Client) {
 	m.init()
 	m.muClients.Lock()
@@ -233,7 +233,6 @@ func (m *MapStore) RemoveClient(c *stela.Client) {
 	for i, rc := range m.clients {
 		if rc == c {
 			m.clients = append(m.clients[:i], m.clients[i+1:]...)
-			return
 		}
 	}
 
@@ -269,18 +268,46 @@ func (m *MapStore) RemoveClient(c *stela.Client) {
 	}
 }
 
-// Client returns a client from m.clients based on uuid
-func (m *MapStore) Client(uuid string) (*stela.Client, error) {
+// RemoveClients convenience method to RemoveClient for each client in provided slice
+func (m *MapStore) RemoveClients(clients []*stela.Client) {
+	for _, c := range clients {
+		m.RemoveClient(c)
+	}
+}
+
+// Client returns a client from m.clients based on id
+func (m *MapStore) Client(id string) (*stela.Client, error) {
 	m.init()
 	m.muClients.Lock()
 	defer m.muClients.Unlock()
 	for _, c := range m.clients {
-		if c.UUID == uuid {
+		if c.ID == id {
 			return c, nil
 		}
 	}
 
-	return nil, fmt.Errorf("Couldn't find a client from uuid: %s", uuid)
+	return nil, fmt.Errorf("Couldn't find a client from id: %s", id)
+}
+
+// Clients returns a slice of clients from m.clients based on ip address
+func (m *MapStore) Clients(address string) ([]*stela.Client, error) {
+	m.init()
+	m.muClients.Lock()
+	defer m.muClients.Unlock()
+
+	// Look for clients matching the address
+	var clients []*stela.Client
+	for _, c := range m.clients {
+		if c.Address == address {
+			clients = append(clients, c)
+		}
+	}
+
+	if len(clients) == 0 {
+		return nil, fmt.Errorf("No clients found with the address: %s", address)
+	}
+
+	return clients, nil
 }
 
 func (m *MapStore) hasService(s *stela.Service) bool {
@@ -309,10 +336,6 @@ func (m *MapStore) rotateServices(serviceName string) error {
 	}
 
 	return nil
-}
-
-func (m *MapStore) raftConfig() *raft.Config {
-	return raft.DefaultConfig()
 }
 
 // Raft
@@ -435,8 +458,12 @@ func (m *MapStore) WaitForLeader() error {
 	}
 }
 
+func (m *MapStore) raftConfig() *raft.Config {
+	return raft.DefaultConfig()
+}
+
 type fsmSnapshot struct {
-	services map[string]map[stela.Service]*stela.Service
+	services map[string][]stela.Service
 }
 
 func (f *fsmSnapshot) Persist(sink raft.SnapshotSink) error {

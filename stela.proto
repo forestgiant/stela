@@ -15,7 +15,7 @@ message SubscribeResponse{}
 message RegisterResponse{}
 
 message RegisterRequest {
-    string client_uuid = 1;
+    string client_id = 1;
     string name = 2;
     string hostname = 3;
     string address = 4;
@@ -32,12 +32,12 @@ message ServiceResponse {
 }
 
 message SubscribeRequest {
-    string client_uuid = 1;
+    string client_id = 1;
     string service_name = 2;
 }
 
 message DiscoverRequest {
-    string client_uuid = 1;
+    string client_id = 1;
     string service_name = 2;
 }
 
@@ -46,5 +46,6 @@ message DiscoverResponse {
 }
 
 message ConnectRequest {
-    string client_uuid = 1;
+    string client_id = 1;
+    string client_address = 2;
 }

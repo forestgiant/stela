@@ -4,6 +4,8 @@ import (
 	"net"
 	"sync"
 
+	"time"
+
 	"github.com/miekg/dns"
 )
 
@@ -160,24 +162,28 @@ type Client struct {
 	subscribeCh chan *Service // Used to send changes in services
 }
 
-// SubscribeCh returns a channel of Services that is sent a service when one is removed or added
-func (c *Client) SubscribeCh() <-chan *Service {
+func (c *Client) init() {
 	if c.subscribeCh == nil {
 		c.subscribeCh = make(chan *Service)
 	}
+}
+
+// SubscribeCh returns a channel of Services that is sent a service when one is removed or added
+func (c *Client) SubscribeCh() <-chan *Service {
+	c.init()
 
 	return c.subscribeCh
 }
 
 // Notify sends a service to the client's subscribeCh
 func (c *Client) Notify(s *Service) {
-	if c.subscribeCh == nil {
-		c.subscribeCh = make(chan *Service)
-	}
+	c.init()
 
-	// Notify the client of the new service without blocking
+	// Notify the client of the new service and timeout if none receives without 1 millisecond
+	t := time.NewTimer(time.Millisecond * 1)
 	select {
 	case c.subscribeCh <- s:
-		// default:
+	case <-t.C:
+		t.Stop()
 	}
 }

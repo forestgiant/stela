@@ -1,11 +1,15 @@
 package mapstore
 
 import (
-	"fmt"
 	"reflect"
+	"runtime"
 	"testing"
 
+	"golang.org/x/net/context"
+
 	"sync"
+
+	"time"
 
 	"gitlab.fg/go/stela"
 )
@@ -67,7 +71,7 @@ func Test_rotateServices(t *testing.T) {
 
 	var tests = []struct {
 		service          stela.Service
-		expectedPriority int
+		expectedPriority int32
 	}{
 		{stela.Service{
 			Name:    "priority.service.fg",
@@ -144,27 +148,43 @@ func TestSubscribe(t *testing.T) {
 
 	// Listen for registered services
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(len(testServices))
+	once := &sync.Once{}
+	writeWaitChan := make(chan struct{})
+	readWaitChan := make(chan struct{})
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Millisecond*100)
+	readCount := 0
 	go func() {
-		wg.Done()
 		for {
 			select {
 			case s := <-c.SubscribeCh():
-				fmt.Println(s, s.Action)
 				switch s.Action {
 				case stela.RegisterAction:
 					registered = append(registered, s)
 				case stela.DeregisterAction:
 					deregistered = append(deregistered, s)
 				}
+
+				// Count how many times we've received a subscribed service
+				// Multiple by two since we are registering an deregistering all testServices
+				readCount++
+				if readCount == len(testServices)*2 {
+					close(writeWaitChan)
+				}
+			case <-ctx.Done():
+				return
+			default:
+				once.Do(func() { close(readWaitChan) })
 			}
 		}
 	}()
-	wg.Wait()
+
+	// Block until we are ready to receive subscription information
+	<-readWaitChan
+	runtime.Gosched()
 
 	for _, s := range testServices {
 		// Register services
-		fmt.Println("reg", s)
 		m.Register(s)
 	}
 
@@ -173,25 +193,39 @@ func TestSubscribe(t *testing.T) {
 		m.Deregister(s)
 	}
 
+	// Wait for either a timeout or all the subscribed services to be read
+	select {
+	case <-writeWaitChan:
+		break
+	case <-ctx.Done():
+		if ctx.Err() != nil {
+			t.Fatal("TestSubscribe timed out: ", ctx.Err())
+		}
+	}
+
+	// Function to compare testServices with serviceSlice arg
 	testSubscribe := func(serviceSlice []*stela.Service) {
 		if len(serviceSlice) != len(testServices) {
 			t.Fatalf("Subscribe didn't match testServices. Received: %d, Expected: %d", len(serviceSlice), len(testServices))
 		}
 
+		// Make sure the services returned were the ones sent
+		total := len(serviceSlice)
 		for i, rs := range serviceSlice {
 			s := testServices[i]
 			if rs.Equal(s) {
-				fmt.Println("service equal", i)
-				// Remove from slice
-				// serviceSlice = append(serviceSlice[:i], serviceSlice[i+1:]...)
+				total--
 			}
 		}
 
-		// if len(serviceSlice) != 0 {
-		// 	t.Fatalf("Subscribe slice should be 0. Received: %d", len(serviceSlice))
-		// }
+		if total != 0 {
+			t.Fatalf("Services returned did not match services in testServices slice")
+		}
 	}
 
+	// Now make sure both registered and deregistered actions were received
 	testSubscribe(registered)
 	testSubscribe(deregistered)
+
+	cancel()
 }

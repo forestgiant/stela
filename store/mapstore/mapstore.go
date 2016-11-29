@@ -149,19 +149,23 @@ func (m *MapStore) Deregister(s *stela.Service) {
 		c.Notify(s)
 	}
 
-	// Remove service from services map
-	for k, v := range m.services {
-		for i, rs := range v {
-			if rs.Equal(s) {
-				// Remove from slice
-				v = append(v[:i], v[i+1:]...)
-			}
-		}
+	m.muServices.Lock()
+	defer m.muServices.Unlock()
 
-		// If that was the last service in the slice delete the key
-		if len(v) == 0 {
-			delete(m.services, k)
+	// Remove service from services slice
+	services := m.services[s.Name]
+	for i, rs := range services {
+		if rs.Equal(s) {
+			// Remove from slice
+			services = append(services[:i], services[i+1:]...)
 		}
+	}
+
+	// If that was the last service in the slice delete the key
+	if len(services) == 0 {
+		delete(m.services, s.Name)
+	} else {
+		m.services[s.Name] = services
 	}
 }
 
@@ -189,21 +193,25 @@ func (m *MapStore) Subscribe(serviceName string, c *stela.Client) error {
 
 // Unsubscribe quits sending service changes to the stela.Client
 func (m *MapStore) Unsubscribe(serviceName string, c *stela.Client) error {
-	if m.services[serviceName] == nil {
-		return fmt.Errorf("No service registered under: %s", serviceName)
-	}
-
 	m.initSubscribe()
 
 	// Remove client to list of subscribers
 	m.muSubscribers.Lock()
 	defer m.muSubscribers.Unlock()
 	subscribers := m.subscribers[serviceName]
-	for i, rc := range m.subscribers[serviceName] {
+	for i, rc := range subscribers {
 		// Make sure the client is registered
 		if c == rc {
 			// Remove it from the subscriber slice
 			subscribers = append(subscribers[:i], subscribers[i+1:]...)
+
+			// If that was the last subscriber in the slice delete the key
+			if len(subscribers) == 0 {
+				delete(m.subscribers, serviceName)
+			} else {
+				m.subscribers[serviceName] = subscribers
+			}
+
 			return nil
 		}
 	}

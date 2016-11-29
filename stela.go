@@ -3,7 +3,6 @@ package stela
 import (
 	"net"
 	"sync"
-
 	"time"
 
 	"github.com/miekg/dns"
@@ -179,8 +178,8 @@ func (c *Client) SubscribeCh() <-chan *Service {
 func (c *Client) Notify(s *Service) {
 	c.init()
 
-	// Notify the client of the new service and timeout if none receives without 1 millisecond
-	t := time.NewTimer(time.Millisecond * 1)
+	// Notify the client of the new service and timeout if nothing reads it within 10 millisecond
+	t := time.NewTimer(time.Millisecond * 10)
 	select {
 	case c.subscribeCh <- s:
 	case <-t.C:

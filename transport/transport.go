@@ -95,3 +95,8 @@ func (s *Server) Discover(ctx context.Context, req *stela.DiscoverRequest) (*ste
 func (s *Server) DiscoverOne(ctx context.Context, req *stela.DiscoverRequest) (*stela.ServiceResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Currently Unimplemented")
 }
+
+// Services returns all services registered with stela even other clients
+func (s *Server) Services(ctx context.Context) {
+
+}

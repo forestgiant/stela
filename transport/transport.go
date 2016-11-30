@@ -13,16 +13,30 @@ type Server struct {
 	Store store.Store
 }
 
-// Connect a stela client to a stream of possible subscriptions. Uses the client id in to keep track
-// of services and subscriptions it registers
-func (s *Server) Connect(cr *stela.ConnectRequest, stream stela.Stela_ConnectServer) error {
-	ctx := stream.Context()
-
+// AddClient adds a client to the store and returns it's id
+func (s *Server) AddClient(ctx context.Context, req *stela.AddClientRequest) (*stela.AddClientResponse, error) {
 	// Add client to the store
 	c := &stela.Client{}
-	c.ID = cr.ClientId
-	c.Address = cr.ClientAddress
-	s.Store.AddClient(c)
+	c.Address = req.ClientAddress
+	if err := s.Store.AddClient(c); err != nil {
+		return nil, err
+	}
+
+	return &stela.AddClientResponse{
+		ClientId: c.ID,
+	}, nil
+}
+
+// Connect a stela client to a stream of possible subscriptions. Uses the client id in to keep track
+// of services and subscriptions it registers
+func (s *Server) Connect(req *stela.ConnectRequest, stream stela.Stela_ConnectServer) error {
+	ctx := stream.Context()
+
+	// Look up client
+	c, err := s.Store.Client(req.ClientId)
+	if err != nil {
+		return err
+	}
 
 	// Send service to clients on interval for simiulation
 	for {
@@ -50,9 +64,9 @@ func (s *Server) Connect(cr *stela.ConnectRequest, stream stela.Stela_ConnectSer
 // Subscribe a client to a service name.
 func (s *Server) Subscribe(ctx context.Context, req *stela.SubscribeRequest) (*stela.SubscribeResponse, error) {
 	// Look up client that sent the request
-	c := s.Store.Client(req.ClientId)
-	if c == nil {
-		return nil, grpc.Errorf(codes.Aborted, "Can't subscribe with a client that hasn't connected")
+	c, err := s.Store.Client(req.ClientId)
+	if err != nil {
+		return nil, err
 	}
 
 	// Subscribe the client to the serviceName
@@ -64,9 +78,9 @@ func (s *Server) Subscribe(ctx context.Context, req *stela.SubscribeRequest) (*s
 // Register a service to a client
 func (s *Server) Register(ctx context.Context, req *stela.RegisterRequest) (*stela.RegisterResponse, error) {
 	// Look up client that sent the request
-	c := s.Store.Client(req.ClientId)
-	if c == nil {
-		return nil, grpc.Errorf(codes.Aborted, "Can't register with a client that hasn't connected")
+	c, err := s.Store.Client(req.ClientId)
+	if err != nil {
+		return nil, err
 	}
 
 	// Convert req to service

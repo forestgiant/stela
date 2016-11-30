@@ -10,9 +10,9 @@ type Store interface {
 	DiscoverOne(serviceName string) (*stela.Service, error)
 	Subscribe(serviceName string, c *stela.Client) error
 	Unsubscribe(serviceName string, c *stela.Client) error
-	Client(id string) *stela.Client
-	Clients(address string) []*stela.Client // Returns all clients by a given ip address
-	AddClient(c *stela.Client)
+	Client(id string) (*stela.Client, error)
+	Clients(address string) ([]*stela.Client, error) // Returns all clients by a given ip address
+	AddClient(c *stela.Client) error
 	RemoveClient(c *stela.Client) error
 	RemoveClients(clients []*stela.Client) error
 }

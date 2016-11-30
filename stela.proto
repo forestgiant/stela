@@ -3,6 +3,7 @@ syntax = "proto3";
 package stela;
 
 service Stela {
+    rpc AddClient(AddClientRequest) returns (stream AddClientResponse) {}
     rpc Connect(ConnectRequest) returns (stream ServiceResponse) {}
     rpc Subscribe(SubscribeRequest) returns (SubscribeResponse) {}
     rpc Register(RegisterRequest) returns (RegisterResponse) {}
@@ -47,5 +48,12 @@ message DiscoverResponse {
 
 message ConnectRequest {
     string client_id = 1;
-    string client_address = 2;
+}
+
+message AddClientRequest {
+    string client_address = 1;
+}
+
+message AddClientResponse {
+    string client_id = 1;
 }

@@ -42,7 +42,7 @@ type Service struct {
 	mu           *sync.Mutex // protects registerCh, deregisterCh, stopped
 }
 
-// Equal is a duplicate method from api/api.go
+// Equal tests if a Service is the same
 func (s Service) Equal(testService *Service) bool {
 	if s.Name != testService.Name {
 		return false
@@ -160,6 +160,17 @@ type Client struct {
 	ID          string
 	mu          sync.Mutex    // protect subscribeCh
 	subscribeCh chan *Service // used to send changes in services
+}
+
+// Equal tests if a Service is the same
+func (c *Client) Equal(testClient *Client) bool {
+	if c.Address != testClient.Address {
+		return false
+	}
+	if c.ID != testClient.ID {
+		return false
+	}
+	return true
 }
 
 func (c *Client) init() {

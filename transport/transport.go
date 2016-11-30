@@ -96,7 +96,7 @@ func (s *Server) DiscoverOne(ctx context.Context, req *stela.DiscoverRequest) (*
 	return nil, grpc.Errorf(codes.Unimplemented, "Currently Unimplemented")
 }
 
-// Services returns all services registered with stela even other clients
+// Services returns all services registered with stela even other clients TODO
 func (s *Server) Services(ctx context.Context) {
 
 }

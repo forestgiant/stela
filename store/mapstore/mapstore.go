@@ -1,10 +1,13 @@
 package mapstore
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"sort"
 	"sync"
+
+	"net"
 
 	"github.com/hashicorp/raft"
 	"gitlab.fg/go/stela"
@@ -92,7 +95,8 @@ func (m *MapStore) Deregister(s *stela.Service) {
 
 	// Remove service from services slice
 	services := m.services[s.Name]
-	for i, rs := range services {
+	for i := len(services) - 1; i >= 0; i-- {
+		rs := services[i]
 		if rs.Equal(s) {
 			// Remove from slice
 			services = append(services[:i], services[i+1:]...)
@@ -137,7 +141,8 @@ func (m *MapStore) Unsubscribe(serviceName string, c *stela.Client) error {
 	m.muSubscribers.Lock()
 	defer m.muSubscribers.Unlock()
 	subscribers := m.subscribers[serviceName]
-	for i, rc := range subscribers {
+	for i := len(subscribers) - 1; i >= 0; i-- {
+		rc := subscribers[i]
 		// Make sure the client is registered
 		if c == rc {
 			// Remove it from the subscriber slice
@@ -186,12 +191,31 @@ func (m *MapStore) DiscoverOne(serviceName string) (*stela.Service, error) {
 	return &s, nil
 }
 
-// AddClient adds to client slice m.clients
-func (m *MapStore) AddClient(c *stela.Client) {
+// AddClient adds to client slice m.clients and return the client id
+func (m *MapStore) AddClient(c *stela.Client) error {
+	// Validate client ip address
+	if ip := net.ParseIP(c.Address); ip == nil {
+		return fmt.Errorf("Client has invalid address: %s", c.Address)
+	}
+
+	// Don't add duplicate clients
+	if m.hasClient(c) {
+		return errors.New("Client is already registered")
+	}
+
 	m.init()
 	m.muClients.Lock()
 	defer m.muClients.Unlock()
 	m.clients = append(m.clients, c)
+
+	// client id is the index of the client just added
+	clientid, err := generateID(10)
+	if err != nil {
+		return err
+	}
+	c.ID = clientid
+
+	return nil
 }
 
 // RemoveClient removes client from the slice m.clients, services it registered and any subscriptions
@@ -199,31 +223,42 @@ func (m *MapStore) RemoveClient(c *stela.Client) {
 	m.init()
 	m.muClients.Lock()
 	defer m.muClients.Unlock()
-	for i, rc := range m.clients {
+	for i := len(m.clients) - 1; i >= 0; i-- {
+		rc := m.clients[i]
 		if rc == c {
 			m.clients = append(m.clients[:i], m.clients[i+1:]...)
 		}
 	}
 
+	m.muServices.Lock()
+	defer m.muServices.Unlock()
 	// Remove any services the client registered
-	for k, v := range m.services {
+	for k, services := range m.services {
 		// Remove any services that the client registered
-		for i, s := range v {
-			if s.Client == c {
+		for i := len(services) - 1; i >= 0; i-- {
+			s := services[i]
+			if s.Client.Equal(c) {
 				// Remove from slice
-				v = append(v[:i], v[i+1:]...)
+				fmt.Println("len", len(services))
+				services = append(services[:i], services[i+1:]...)
+				fmt.Println("remove service!", s)
 			}
 		}
 
 		// If that was the last service in the slice delete the key
-		if len(v) == 0 {
+		if len(services) == 0 {
 			delete(m.services, k)
+		} else {
+			m.services[k] = services
 		}
 	}
 
+	m.muClients.Lock()
+	defer m.muClients.Unlock()
 	// Remove client from Subscribers
 	for k, v := range m.subscribers {
-		for i, rc := range v {
+		for i := len(v) - 1; i >= 0; i-- {
+			rc := v[i]
 			if rc == c {
 				// Remove from slice
 				v = append(v[:i], v[i+1:]...)
@@ -233,6 +268,8 @@ func (m *MapStore) RemoveClient(c *stela.Client) {
 		// If that was the last client subscribed delete the key
 		if len(v) == 0 {
 			delete(m.subscribers, k)
+		} else {
+			m.subscribers[k] = v
 		}
 	}
 }
@@ -280,11 +317,25 @@ func (m *MapStore) Clients(address string) ([]*stela.Client, error) {
 }
 
 func (m *MapStore) hasService(s *stela.Service) bool {
+	m.init()
 	m.muServices.Lock()
 	defer m.muServices.Unlock()
 	for _, rs := range m.services[s.Name] {
 		if s.Equal(&rs) {
 			return true // service is already a registered
+		}
+	}
+
+	return false
+}
+
+func (m *MapStore) hasClient(c *stela.Client) bool {
+	m.init()
+	m.muClients.Lock()
+	defer m.muClients.Unlock()
+	for _, rc := range m.clients {
+		if c.Equal(rc) {
+			return true // client is already a registered
 		}
 	}
 
@@ -305,4 +356,12 @@ func (m *MapStore) rotateServices(serviceName string) error {
 	}
 
 	return nil
+}
+
+func generateID(length int) (string, error) {
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%X", b), nil
 }

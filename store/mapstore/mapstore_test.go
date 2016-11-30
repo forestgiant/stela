@@ -317,3 +317,89 @@ func equalServices(t *testing.T, s1, s2 []stela.Service) {
 		t.Fatalf("Services returned did not match services in slice")
 	}
 }
+
+func TestAddClient(t *testing.T) {
+	m := MapStore{}
+
+	var tests = []struct {
+		client     *stela.Client
+		shouldFail bool
+	}{
+		{&stela.Client{
+			Address: "192.168.2.1",
+		}, false},
+		{&stela.Client{
+			Address: "192.168",
+		}, true},
+		{&stela.Client{
+			Address: "192.168.2.2",
+		}, false},
+	}
+
+	var expectedClients []*stela.Client
+	for _, test := range tests {
+		if err := m.AddClient(test.client); test.shouldFail != (err != nil) {
+			t.Fatal("TestAddClient failed:", err)
+		}
+
+		// Store the successful clients into our own service
+		if !test.shouldFail {
+			expectedClients = append(expectedClients, test.client)
+		}
+	}
+
+	// Try to add the first client twice
+	if err := m.AddClient(tests[0].client); err == nil {
+		t.Fatal("TestAddClient should fail. Can't add the same client twice")
+	}
+
+	// Verify m.clients is what we expect
+	if !reflect.DeepEqual(expectedClients, m.clients) {
+		t.Fatalf("TestAddClients failed. Expected %v, Received %v", expectedClients, m.clients)
+	}
+}
+
+// func TestRemoveClient(t *testing.T) {
+// 	m := MapStore{}
+// 	c := &stela.Client{}
+// 	serviceName := "subscribe.service.fg"
+// 	var testServices = []*stela.Service{
+// 		&stela.Service{
+// 			Name:    serviceName,
+// 			Target:  "jlu.macbook",
+// 			Address: "127.0.0.1",
+// 			Port:    9000,
+// 		},
+// 		&stela.Service{
+// 			Name:    serviceName,
+// 			Target:  "fg.macbook",
+// 			Address: "127.0.0.1",
+// 			Port:    9000,
+// 		},
+// 		&stela.Service{
+// 			Name:    serviceName,
+// 			Target:  "jlu.macbook",
+// 			Address: "localhost",
+// 			Port:    80,
+// 		},
+// 	}
+
+// 	// Add the client to the map
+// 	m.AddClient(c)
+
+// 	// Subscribe to service
+// 	if err := m.Subscribe(serviceName, c); err != nil {
+// 		t.Fatal(err)
+// 	}
+
+// 	// Register services with client
+// 	for _, s := range testServices {
+// 		s.Client = c
+// 		if err := m.Register(s); err != nil {
+// 			t.Fatal("TestRemoveClient registeration failed")
+// 		}
+// 	}
+
+// 	// Now remove the client
+// 	m.RemoveClient(c)
+// }

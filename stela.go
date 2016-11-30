@@ -158,10 +158,13 @@ func (s *Service) StopRegistering() {
 type Client struct {
 	Address     string // IPv4 address
 	ID          string
-	subscribeCh chan *Service // Used to send changes in services
+	mu          sync.Mutex    // protect subscribeCh
+	subscribeCh chan *Service // used to send changes in services
 }
 
 func (c *Client) init() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.subscribeCh == nil {
 		c.subscribeCh = make(chan *Service)
 	}
@@ -170,7 +173,6 @@ func (c *Client) init() {
 // SubscribeCh returns a channel of Services that is sent a service when one is removed or added
 func (c *Client) SubscribeCh() <-chan *Service {
 	c.init()
-
 	return c.subscribeCh
 }
 

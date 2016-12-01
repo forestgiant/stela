@@ -15,6 +15,8 @@ import (
 
 // MapStore implements the Store interface creating an in memory map of stela.Services
 type MapStore struct {
+	RaftDir       string
+	RaftAddr      string
 	services      map[string][]stela.Service // Map of service names that holds a slice of registered services
 	clients       []*stela.Client
 	subscribers   map[string][]*stela.Client // Store clients that subscribe to a service name
@@ -22,8 +24,6 @@ type MapStore struct {
 	muSubscribers *sync.RWMutex              // Mutex used to lock subscriber map
 	muClients     *sync.RWMutex              // Mutex used to lock client slice
 	peerStore     raft.PeerStore
-	raftDir       string
-	raftTransport raft.StreamLayer
 	raft          *raft.Raft
 }
 

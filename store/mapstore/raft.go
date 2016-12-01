@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -19,7 +20,7 @@ import (
 // Open initiates raft
 func (m *MapStore) Open(enableSingle bool) error {
 	// Make a directory for raft files
-	if err := os.MkdirAll(m.raftDir, 0755); err != nil {
+	if err := os.MkdirAll(m.RaftDir, 0755); err != nil {
 		return err
 	}
 
@@ -27,7 +28,7 @@ func (m *MapStore) Open(enableSingle bool) error {
 	config := m.raftConfig()
 
 	// Check for existing peers
-	peers, err := raftutil.ReadPeersJSON(filepath.Join(m.raftDir, "peers.json"))
+	peers, err := raftutil.ReadPeersJSON(filepath.Join(m.RaftDir, "peers.json"))
 	if err != nil {
 		return err
 	}
@@ -41,30 +42,37 @@ func (m *MapStore) Open(enableSingle bool) error {
 	}
 
 	// Setup Raft communication.
-	transport := raft.NewNetworkTransport(m.raftTransport, 3, 10*time.Second, os.Stderr)
+	addr, err := net.ResolveTCPAddr("tcp", m.RaftAddr)
+	if err != nil {
+		return err
+	}
+	transport, err := raft.NewTCPTransport("127.0.0.1", addr, 3, 10*time.Second, os.Stderr)
+	if err != nil {
+		return err
+	}
 
 	// Create peer storage.
-	m.peerStore = raft.NewJSONPeers(m.raftDir, transport)
+	m.peerStore = raft.NewJSONPeers(m.RaftDir, transport)
 
 	// Setup snapshot store
 	// TODO pass in forestgiant log instead of os.Stderr
-	snapshot, err := raft.NewFileSnapshotStore(m.raftDir, 2, os.Stderr)
+	snapshot, err := raft.NewFileSnapshotStore(m.RaftDir, 2, os.Stderr)
 	if err != nil {
 		return fmt.Errorf("Error creating snapshot store: %s", err)
 	}
 
 	// Create a boltdb logStore for raft
-	logStore, err := raftboltdb.NewBoltStore(filepath.Join(m.raftDir, "raft.db"))
+	logStore, err := raftboltdb.NewBoltStore(filepath.Join(m.RaftDir, "raft.db"))
 	if err != nil {
 		return fmt.Errorf("Error creating boltdb logStore: %s", err)
 	}
 
 	// Start raft
-	ra, err := raft.NewRaft(config, m, logStore, logStore, snapshot, m.peerStore, transport)
+	r, err := raft.NewRaft(config, m, logStore, logStore, snapshot, m.peerStore, transport)
 	if err != nil {
 		return fmt.Errorf("Error creating raft: %s", err)
 	}
-	m.raft = ra
+	m.raft = r
 
 	return nil
 }

@@ -239,9 +239,7 @@ func (m *MapStore) RemoveClient(c *stela.Client) {
 			s := services[i]
 			if s.Client.Equal(c) {
 				// Remove from slice
-				fmt.Println("len", len(services))
 				services = append(services[:i], services[i+1:]...)
-				fmt.Println("remove service!", s)
 			}
 		}
 
@@ -253,8 +251,8 @@ func (m *MapStore) RemoveClient(c *stela.Client) {
 		}
 	}
 
-	m.muClients.Lock()
-	defer m.muClients.Unlock()
+	m.muSubscribers.Lock()
+	defer m.muSubscribers.Unlock()
 	// Remove client from Subscribers
 	for k, v := range m.subscribers {
 		for i := len(v) - 1; i >= 0; i-- {

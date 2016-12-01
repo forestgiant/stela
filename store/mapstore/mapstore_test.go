@@ -359,47 +359,147 @@ func TestAddClient(t *testing.T) {
 	}
 }
 
-// func TestRemoveClient(t *testing.T) {
-// 	m := MapStore{}
-// 	c := &stela.Client{}
-// 	serviceName := "subscribe.service.fg"
-// 	var testServices = []*stela.Service{
-// 		&stela.Service{
-// 			Name:    serviceName,
-// 			Target:  "jlu.macbook",
-// 			Address: "127.0.0.1",
-// 			Port:    9000,
-// 		},
-// 		&stela.Service{
-// 			Name:    serviceName,
-// 			Target:  "fg.macbook",
-// 			Address: "127.0.0.1",
-// 			Port:    9000,
-// 		},
-// 		&stela.Service{
-// 			Name:    serviceName,
-// 			Target:  "jlu.macbook",
-// 			Address: "localhost",
-// 			Port:    80,
-// 		},
-// 	}
+func TestRemoveClients(t *testing.T) {
+	m := MapStore{}
+	serviceName := "subscribe.service.fg"
 
-// 	// Add the client to the map
-// 	m.AddClient(c)
+	testClients := []*stela.Client{
+		&stela.Client{Address: "127.0.0.1"},
+		&stela.Client{Address: "127.0.0.1"},
+	}
 
-// 	// Subscribe to service
-// 	if err := m.Subscribe(serviceName, c); err != nil {
-// 		t.Fatal(err)
-// 	}
+	testServices := []*stela.Service{
+		&stela.Service{
+			Name:    serviceName,
+			Target:  "jlu.macbook",
+			Address: "127.0.0.1",
+			Port:    9000,
+			Client:  testClients[0],
+		},
+		&stela.Service{
+			Name:    serviceName,
+			Target:  "fg.macbook",
+			Address: "127.0.0.1",
+			Port:    9000,
+			Client:  testClients[0],
+		},
+		&stela.Service{
+			Name:    serviceName,
+			Target:  "jlu.macbook",
+			Address: "localhost",
+			Port:    80,
+			Client:  testClients[0],
+		},
+		&stela.Service{
+			Name:    serviceName,
+			Target:  "my.macbook",
+			Address: "localhost",
+			Port:    80,
+			Client:  testClients[1],
+		},
+	}
 
-// 	// Register services with client
-// 	for _, s := range testServices {
-// 		s.Client = c
-// 		if err := m.Register(s); err != nil {
-// 			t.Fatal("TestRemoveClient registeration failed")
-// 		}
-// 	}
+	// Add the clients
+	for _, c := range testClients {
+		if err := m.AddClient(c); err != nil {
+			t.Fatal("AddClient failed")
+		}
 
-// 	// Now remove the client
-// 	m.RemoveClient(c)
-// }
+		// Subscribe to service
+		if err := m.Subscribe(serviceName, c); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Register services with client
+	for _, s := range testServices {
+		if err := m.Register(s); err != nil {
+			t.Fatal("TestRemoveClient registeration failed")
+		}
+	}
+
+	// Now remove the clients
+	m.RemoveClients(testClients)
+
+	// Verify the services were removed from m.services
+	for _, v := range m.services {
+		for _, s := range v {
+			// See if any belong to our client
+			for _, c := range testClients {
+				if s.Client.Equal(c) {
+					t.Fatal("Service registered belongs to our client")
+				}
+			}
+		}
+	}
+
+	// Verify the client was removed from m.clients
+	for _, rc := range m.clients {
+		for _, c := range testClients {
+			if rc.Equal(c) {
+				t.Fatal("Client shouldn't be registered")
+			}
+		}
+	}
+
+	// Verify client was removed from m.subscriptions
+	subscribers := m.subscribers[serviceName]
+	for _, rc := range subscribers {
+		for _, c := range testClients {
+			if rc.Equal(c) {
+				t.Fatal("Client shouldn't be subscribed")
+			}
+		}
+	}
+}
+
+func TestClient(t *testing.T) {
+	m := MapStore{}
+	c := &stela.Client{Address: "127.0.0.1"}
+	m.AddClient(c)
+
+	rc, err := m.Client(c.ID)
+	if err != nil {
+		t.Fatal("Client getter failed")
+	}
+
+	if !rc.Equal(c) {
+		t.Fatal("Client getter failed")
+	}
+
+	_, err = m.Client("notregistered")
+	if err == nil {
+		t.Fatal("Client getter failed")
+	}
+}
+
+func TestClients(t *testing.T) {
+	m := MapStore{}
+
+	testClients := []*stela.Client{
+		&stela.Client{Address: "127.0.0.1"},
+		&stela.Client{Address: "127.0.0.1"},
+	}
+
+	// Add the clients
+	for _, c := range testClients {
+		if err := m.AddClient(c); err != nil {
+			t.Fatal("AddClient failed")
+		}
+	}
+
+	clients, err := m.Clients("127.0.0.1")
+	if err != nil {
+		t.Fatal("Clients getter failed")
+	}
+
+	if !reflect.DeepEqual(testClients, clients) {
+		t.Fatalf("TestClients failed. Expected %v, Received %v", testClients, clients)
+	}
+
+	// Asking for an address that isn't registered should error
+	clients, err = m.Clients("192.168.1.1")
+	if err == nil {
+		t.Fatal("Clients getter failed")
+	}
+}

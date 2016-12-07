@@ -9,11 +9,27 @@ service Stela {
     rpc Register(RegisterRequest) returns (RegisterResponse) {}
     rpc Discover(DiscoverRequest) returns (DiscoverResponse) {}
     rpc DiscoverOne(DiscoverRequest) returns (ServiceResponse) {}
+    rpc DiscoverAll(DiscoverAllRequest) returns (DiscoverResponse) {}
+    
+    // Peer related RPC is used to request all peer members
+    rpc PeerDiscover(DiscoverRequest) returns (DiscoverResponse) {}
+    rpc PeerDiscoverOne(DiscoverRequest) returns (ServiceResponse) {}
+    rpc PeerDiscoverAll(DiscoverAllRequest) returns (DiscoverResponse) {}
 }
 
-message SubscribeResponse{}
+// Request
+message AddClientRequest {
+    string client_address = 1;
+}
 
-message RegisterResponse{}
+message ConnectRequest {
+    string client_id = 1;
+}
+
+message SubscribeRequest {
+    string client_id = 1;
+    string service_name = 2;
+}
 
 message RegisterRequest {
     string client_id = 1;
@@ -24,6 +40,17 @@ message RegisterRequest {
     int32 priority = 6;
 }
 
+message DiscoverRequest {
+    string service_name = 2;
+}
+
+message DiscoverAllRequest{}
+
+// Response
+message AddClientResponse {
+    string client_id = 1;
+}
+
 message ServiceResponse {
     string name = 1;
     string hostname = 2;
@@ -32,28 +59,10 @@ message ServiceResponse {
     int32 priority = 5;
 }
 
-message SubscribeRequest {
-    string client_id = 1;
-    string service_name = 2;
-}
+message SubscribeResponse{}
 
-message DiscoverRequest {
-    string client_id = 1;
-    string service_name = 2;
-}
+message RegisterResponse{}
 
 message DiscoverResponse {
     repeated ServiceResponse services = 1;
-}
-
-message ConnectRequest {
-    string client_id = 1;
-}
-
-message AddClientRequest {
-    string client_address = 1;
-}
-
-message AddClientResponse {
-    string client_id = 1;
 }

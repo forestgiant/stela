@@ -16,32 +16,32 @@ func Test_rotateServices(t *testing.T) {
 	serviceName := "priority.service.fg"
 
 	var tests = []struct {
-		service          stela.Service
+		service          *stela.Service
 		expectedPriority int32
 	}{
-		{stela.Service{
+		{&stela.Service{
 			Name:    serviceName,
 			Target:  "jlu.macbook",
 			Address: "127.0.0.1",
 			Port:    9000,
 		}, 2},
-		{stela.Service{
+		{&stela.Service{
 			Name:    serviceName,
 			Target:  "jlu.macbook",
 			Address: "127.0.0.2",
 			Port:    9000,
 		}, 1},
-		{stela.Service{
+		{&stela.Service{
 			Name:    serviceName,
 			Target:  "jlu.macbook",
 			Address: "127.0.0.3",
 			Port:    9000,
 		}, 0},
 	}
-	var expectedServices []stela.Service
+	var expectedServices []*stela.Service
 	for _, test := range tests {
 		// First we need to register them
-		if err := m.Register(&test.service); err != nil {
+		if err := m.Register(test.service); err != nil {
 			t.Fatal(err)
 		}
 
@@ -51,7 +51,7 @@ func Test_rotateServices(t *testing.T) {
 	// Loop through services registered and make sure their priorities match
 	for i, s := range m.services[serviceName] {
 		ts := tests[i]
-		if s.Equal(&ts.service) {
+		if s.Equal(ts.service) {
 			if s.Priority != ts.expectedPriority {
 				t.Fatalf("Test_rotateServices: Priorites didn't match. Expected: %v, Received: %v", ts.expectedPriority, s.Priority)
 			}
@@ -152,7 +152,7 @@ func TestSubscribe(t *testing.T) {
 		}
 
 		// Make sure the serviceSlice has all the testServices
-		equalServicesPointer(t, testServices, serviceSlice)
+		equalServices(t, testServices, serviceSlice)
 	}
 
 	// Now make sure both registered and deregistered actions were received
@@ -225,7 +225,7 @@ func TestRegistrationAndDiscovery(t *testing.T) {
 		}, true},
 	}
 
-	expectedServices := make(map[string][]stela.Service)
+	expectedServices := make(map[string][]*stela.Service)
 	for _, test := range tests {
 		if err := m.Register(test.service); test.shouldFail != (err != nil) {
 			t.Fatal(err)
@@ -233,7 +233,7 @@ func TestRegistrationAndDiscovery(t *testing.T) {
 
 		// Store the successful services into our own expected map
 		if !test.shouldFail {
-			expectedServices[test.service.Name] = append([]stela.Service{*test.service}, expectedServices[test.service.Name]...)
+			expectedServices[test.service.Name] = append([]*stela.Service{test.service}, expectedServices[test.service.Name]...)
 		}
 	}
 
@@ -264,7 +264,7 @@ func TestRegistrationAndDiscovery(t *testing.T) {
 	// Make sure it's one from the registered services
 	found := false
 	for _, rs := range m.services[serviceName] {
-		if s.Equal(&rs) {
+		if s.Equal(rs) {
 			found = true
 		}
 	}
@@ -284,30 +284,49 @@ func TestRegistrationAndDiscovery(t *testing.T) {
 	}
 }
 
-// equalPointerServices takes two slices of stela.Service and make sure they are correct
-func equalServicesPointer(t *testing.T, s1, s2 []*stela.Service) {
+func TestDiscoverAll(t *testing.T) {
+	serviceName := "service1.services.fg"
+	serviceNameTwo := "service2.services.fg"
+	m := MapStore{}
+
+	var testServices = []*stela.Service{
+		&stela.Service{
+			Name:    serviceName,
+			Target:  "jlu.macbook",
+			Address: "127.0.0.1",
+			Port:    9000,
+		},
+		&stela.Service{
+			Name:    serviceName,
+			Target:  "jlu.macbook",
+			Address: "127.0.0.2",
+			Port:    9000,
+		},
+		&stela.Service{
+			Name:    serviceNameTwo,
+			Target:  "jlu.macbook",
+			Address: "localhost",
+			Port:    80,
+		},
+	}
+
+	for _, s := range testServices {
+		if err := m.Register(s); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	services := m.DiscoverAll()
+	equalServices(t, services, testServices)
+}
+
+// equalServices takes two slices of stela.Service and make sure they are correct
+func equalServices(t *testing.T, s1, s2 []*stela.Service) {
 	// Make sure the services returned were the ones sent
 	total := len(s1)
 	for _, rs := range s2 {
 		for _, ts := range s1 {
 			if rs.Equal(ts) {
-				total--
-			}
-		}
-	}
-
-	if total != 0 {
-		t.Fatalf("Services returned did not match services in slice")
-	}
-}
-
-// equalServices takes two slices of stela.Service and make sure they are correct
-func equalServices(t *testing.T, s1, s2 []stela.Service) {
-	// Make sure the services returned were the ones sent
-	total := len(s1)
-	for _, rs := range s2 {
-		for _, ts := range s1 {
-			if rs.Equal(&ts) {
 				total--
 			}
 		}

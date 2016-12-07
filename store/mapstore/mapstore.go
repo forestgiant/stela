@@ -17,18 +17,18 @@ import (
 type MapStore struct {
 	RaftDir       string
 	RaftAddr      string
-	services      map[string][]stela.Service // Map of service names that holds a slice of registered services
+	services      map[string][]*stela.Service // Map of service names that holds a slice of registered services
 	clients       []*stela.Client
 	subscribers   map[string][]*stela.Client // Store clients that subscribe to a service name
-	muServices    *sync.RWMutex              // Mutex used to lock services map
-	muSubscribers *sync.RWMutex              // Mutex used to lock subscriber map
-	muClients     *sync.RWMutex              // Mutex used to lock client slice
+	muServices    sync.RWMutex               // Mutex used to lock services map
+	muSubscribers sync.RWMutex               // Mutex used to lock subscriber map
+	muClients     sync.RWMutex               // Mutex used to lock client slice
 	peerStore     raft.PeerStore
 	raft          *raft.Raft
 }
 
 // byPriority is a sort interface to sort []srvWithKey slices
-type byPriority []stela.Service
+type byPriority []*stela.Service
 
 func (s byPriority) Len() int           { return len(s) }
 func (s byPriority) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
@@ -36,16 +36,10 @@ func (s byPriority) Less(i, j int) bool { return s[i].Priority < s[j].Priority }
 
 func (m *MapStore) init() {
 	if m.services == nil {
-		m.services = make(map[string][]stela.Service)
+		m.services = make(map[string][]*stela.Service)
 	}
-	if m.muServices == nil {
-		m.muServices = new(sync.RWMutex)
-	}
-	if m.muSubscribers == nil {
-		m.muSubscribers = new(sync.RWMutex)
-	}
-	if m.muClients == nil {
-		m.muClients = new(sync.RWMutex)
+	if m.subscribers == nil {
+		m.subscribers = make(map[string][]*stela.Client)
 	}
 }
 
@@ -71,7 +65,7 @@ func (m *MapStore) Register(s *stela.Service) error {
 	// Add service to the beginning of the services map since it's new
 	m.muServices.Lock()
 	defer m.muServices.Unlock()
-	m.services[s.Name] = append([]stela.Service{*s}, m.services[s.Name]...) // Prepend new service
+	m.services[s.Name] = append([]*stela.Service{s}, m.services[s.Name]...) // Prepend new service
 
 	// Let subscribers know about new service
 	for _, c := range m.subscribers[s.Name] {
@@ -111,19 +105,9 @@ func (m *MapStore) Deregister(s *stela.Service) {
 	}
 }
 
-func (m *MapStore) initSubscribe() {
-	if m.subscribers == nil {
-		m.subscribers = make(map[string][]*stela.Client)
-	}
-
-	if m.muSubscribers == nil {
-		m.muSubscribers = &sync.RWMutex{}
-	}
-}
-
 // Subscribe allows a stela.Client to subscribe to a specific serviceName
 func (m *MapStore) Subscribe(serviceName string, c *stela.Client) error {
-	m.initSubscribe()
+	m.init()
 
 	// Add client to list of subscribers
 	m.muSubscribers.Lock()
@@ -135,7 +119,7 @@ func (m *MapStore) Subscribe(serviceName string, c *stela.Client) error {
 
 // Unsubscribe quits sending service changes to the stela.Client
 func (m *MapStore) Unsubscribe(serviceName string, c *stela.Client) error {
-	m.initSubscribe()
+	m.init()
 
 	// Remove client to list of subscribers
 	m.muSubscribers.Lock()
@@ -163,7 +147,7 @@ func (m *MapStore) Unsubscribe(serviceName string, c *stela.Client) error {
 }
 
 // Discover finds all services registered under a serviceName
-func (m *MapStore) Discover(serviceName string) ([]stela.Service, error) {
+func (m *MapStore) Discover(serviceName string) ([]*stela.Service, error) {
 	services := m.services[serviceName]
 	if len(services) == 0 {
 		return nil, fmt.Errorf("No services discovered with the service name: %s", serviceName)
@@ -188,7 +172,19 @@ func (m *MapStore) DiscoverOne(serviceName string) (*stela.Service, error) {
 	// Rotate services
 	m.rotateServices(serviceName)
 
-	return &s, nil
+	return s, nil
+}
+
+// DiscoverAll returns all the services registered with the store
+func (m *MapStore) DiscoverAll() []*stela.Service {
+	var all []*stela.Service
+	m.muServices.RLock()
+	defer m.muServices.RUnlock()
+	for _, v := range m.services {
+		all = append(all, v...)
+	}
+
+	return all
 }
 
 // AddClient adds to client slice m.clients and return the client id
@@ -319,7 +315,7 @@ func (m *MapStore) hasService(s *stela.Service) bool {
 	m.muServices.Lock()
 	defer m.muServices.Unlock()
 	for _, rs := range m.services[s.Name] {
-		if s.Equal(&rs) {
+		if s.Equal(rs) {
 			return true // service is already a registered
 		}
 	}

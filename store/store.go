@@ -8,6 +8,7 @@ type Store interface {
 	Deregister(s *stela.Service) error
 	Discover(serviceName string) ([]*stela.Service, error)
 	DiscoverOne(serviceName string) (*stela.Service, error)
+	DiscoverAll() []*stela.Service
 	Subscribe(serviceName string, c *stela.Client) error
 	Unsubscribe(serviceName string, c *stela.Client) error
 	Client(id string) (*stela.Client, error)

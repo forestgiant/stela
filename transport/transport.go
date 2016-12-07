@@ -41,13 +41,13 @@ func (s *Server) Connect(req *stela.ConnectRequest, stream stela.Stela_ConnectSe
 	// Send service to clients on interval for simiulation
 	for {
 		select {
-		case s := <-c.SubscribeCh():
+		case rs := <-c.SubscribeCh():
 			response := &stela.ServiceResponse{
-				Name:     s.Name,
-				Hostname: s.Target,
-				Address:  s.Address,
-				Port:     s.Port,
-				Priority: s.Priority,
+				Name:     rs.Name,
+				Hostname: rs.Target,
+				Address:  rs.Address,
+				Port:     rs.Port,
+				Priority: rs.Priority,
 			}
 
 			if err := stream.Send(response); err != nil {
@@ -102,15 +102,75 @@ func (s *Server) Register(ctx context.Context, req *stela.RegisterRequest) (*ste
 
 // Discover all services registered under a service name. Ex. "test.services.fg"
 func (s *Server) Discover(ctx context.Context, req *stela.DiscoverRequest) (*stela.DiscoverResponse, error) {
-	return nil, grpc.Errorf(codes.Unimplemented, "Currently Unimplemented")
+	services, err := s.Store.Discover(req.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert stela.Service struct to stela.ServiceResponse
+	var srs []*stela.ServiceResponse
+	for _, ds := range services {
+		sr := &stela.ServiceResponse{
+			Name:     ds.Name,
+			Hostname: ds.Target,
+			Address:  ds.Address,
+			Port:     ds.Port,
+			Priority: ds.Priority,
+		}
+		srs = append(srs, sr)
+	}
+
+	return &stela.DiscoverResponse{Services: srs}, nil
 }
 
 // DiscoverOne service registered under a service name.
 func (s *Server) DiscoverOne(ctx context.Context, req *stela.DiscoverRequest) (*stela.ServiceResponse, error) {
+	service, err := s.Store.DiscoverOne(req.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert stela.Service struct to stela.ServiceResponse
+	return &stela.ServiceResponse{
+		Name:     service.Name,
+		Hostname: service.Target,
+		Address:  service.Address,
+		Port:     service.Port,
+		Priority: service.Priority,
+	}, nil
+}
+
+// DiscoverAll returns all services registered with stela even other clients TODO
+func (s *Server) DiscoverAll(ctx context.Context, req *stela.DiscoverRequest) (*stela.DiscoverResponse, error) {
+	services := s.Store.DiscoverAll()
+
+	// Convert stela.Service struct to stela.ServiceResponse
+	var srs []*stela.ServiceResponse
+	for _, ds := range services {
+		sr := &stela.ServiceResponse{
+			Name:     ds.Name,
+			Hostname: ds.Target,
+			Address:  ds.Address,
+			Port:     ds.Port,
+			Priority: ds.Priority,
+		}
+		srs = append(srs, sr)
+	}
+
+	return &stela.DiscoverResponse{Services: srs}, nil
+}
+
+// PeerDiscover all services registered under a service name. Ex. "test.services.fg"
+func (s *Server) PeerDiscover(ctx context.Context, req *stela.DiscoverRequest) (*stela.DiscoverResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Currently Unimplemented")
 }
 
-// Services returns all services registered with stela even other clients TODO
-func (s *Server) Services(ctx context.Context) {
+// PeerDiscoverOne service registered under a service name.
+func (s *Server) PeerDiscoverOne(ctx context.Context, req *stela.DiscoverRequest) (*stela.ServiceResponse, error) {
+	return nil, grpc.Errorf(codes.Unimplemented, "Currently Unimplemented")
+}
 
+// PeerDiscoverAll returns all services registered with any stela member peer
+func (s *Server) PeerDiscoverAll(ctx context.Context, req *stela.DiscoverRequest) (*stela.DiscoverResponse, error) {
+	return nil, grpc.Errorf(codes.Unimplemented, "Currently Unimplemented")
 }

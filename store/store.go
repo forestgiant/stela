@@ -17,10 +17,3 @@ type Store interface {
 	RemoveClient(c *stela.Client) error
 	RemoveClients(clients []*stela.Client) error
 }
-
-// RaftPeer represents a store that uses raft
-type RaftPeer interface {
-	Open(enableSingle bool) error
-	Join(addr string) error   // Add peer raft
-	Remove(addr string) error // Remove peer from raft
-}

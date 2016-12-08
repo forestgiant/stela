@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"gitlab.fg/go/disco/node"
 	"gitlab.fg/go/stela"
 	"gitlab.fg/go/stela/store"
 	"golang.org/x/net/context"
@@ -11,6 +12,7 @@ import (
 // Server implements the stela.proto service
 type Server struct {
 	Store store.Store
+	Peers []*node.Node
 }
 
 // AddClient adds a client to the store and returns it's id
@@ -95,7 +97,34 @@ func (s *Server) Register(ctx context.Context, req *stela.RegisterRequest) (*ste
 	}
 
 	// Register service to store
-	s.Store.Register(service)
+	if err := s.Store.Register(service); err != nil {
+		return nil, err
+	}
+
+	return &stela.RegisterResponse{}, nil
+}
+
+// Deregister a service
+func (s *Server) Deregister(ctx context.Context, req *stela.RegisterRequest) (*stela.RegisterResponse, error) {
+	// Look up client that sent the request
+	c, err := s.Store.Client(req.ClientId)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert req to service
+	service := &stela.Service{
+		Name:     req.Name,
+		Target:   req.Hostname,
+		Address:  req.Address,
+		Port:     req.Port,
+		Priority: req.Priority,
+		Action:   stela.RegisterAction,
+		Client:   c,
+	}
+
+	// Register service to store
+	s.Store.Deregister(service)
 
 	return &stela.RegisterResponse{}, nil
 }
@@ -141,7 +170,7 @@ func (s *Server) DiscoverOne(ctx context.Context, req *stela.DiscoverRequest) (*
 }
 
 // DiscoverAll returns all services registered with stela even other clients TODO
-func (s *Server) DiscoverAll(ctx context.Context, req *stela.DiscoverRequest) (*stela.DiscoverResponse, error) {
+func (s *Server) DiscoverAll(ctx context.Context, req *stela.DiscoverAllRequest) (*stela.DiscoverResponse, error) {
 	services := s.Store.DiscoverAll()
 
 	// Convert stela.Service struct to stela.ServiceResponse
@@ -171,6 +200,6 @@ func (s *Server) PeerDiscoverOne(ctx context.Context, req *stela.DiscoverRequest
 }
 
 // PeerDiscoverAll returns all services registered with any stela member peer
-func (s *Server) PeerDiscoverAll(ctx context.Context, req *stela.DiscoverRequest) (*stela.DiscoverResponse, error) {
+func (s *Server) PeerDiscoverAll(ctx context.Context, req *stela.DiscoverAllRequest) (*stela.DiscoverResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Currently Unimplemented")
 }

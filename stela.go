@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	// DefaultStelaHTTPAddress by default stela assumes there is a local instance running
-	DefaultStelaHTTPAddress = "127.0.0.1:9000"
+	// DefaultStelaAddress by default stela assumes there is a local instance running
+	DefaultStelaAddress = "127.0.0.1:9000"
 
 	// DefaultMulticastAddress is the multicast IPV6 address stela communicates on
 	DefaultMulticastAddress = "[ff12::9000]"

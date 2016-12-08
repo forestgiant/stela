@@ -4,10 +4,9 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"net"
 	"sort"
 	"sync"
-
-	"net"
 
 	"github.com/hashicorp/raft"
 	"gitlab.fg/go/stela"
@@ -46,14 +45,14 @@ func (m *MapStore) init() {
 // Register takes a service adding it to the services map and let's all client subscriers know
 func (m *MapStore) Register(s *stela.Service) error {
 	if !s.Valid() {
-		return errors.New("Service registered is invalid")
+		return fmt.Errorf("%v registered is invalid", s)
 	}
 
 	m.init()
 
 	// Error if it has been added before
 	if m.hasService(s) {
-		return errors.New("Service is already registered")
+		return fmt.Errorf("%v is already registered", s)
 	}
 
 	// Rotate before the other services adding the new service
@@ -269,11 +268,11 @@ func (m *MapStore) RemoveClient(c *stela.Client) {
 }
 
 // RemoveClients convenience method to RemoveClient for each client in provided slice
-func (m *MapStore) RemoveClients(clients []*stela.Client) {
-	for _, c := range clients {
-		m.RemoveClient(c)
-	}
-}
+// func (m *MapStore) RemoveClients(clients []*stela.Client) {
+// 	for _, c := range clients {
+// 		m.RemoveClient(c)
+// 	}
+// }
 
 // Client returns a client from m.clients based on id
 func (m *MapStore) Client(id string) (*stela.Client, error) {
@@ -289,26 +288,26 @@ func (m *MapStore) Client(id string) (*stela.Client, error) {
 	return nil, fmt.Errorf("Couldn't find a client from id: %s", id)
 }
 
-// Clients returns a slice of clients from m.clients based on ip address
-func (m *MapStore) Clients(address string) ([]*stela.Client, error) {
-	m.init()
-	m.muClients.Lock()
-	defer m.muClients.Unlock()
+// // Clients returns a slice of clients from m.clients based on ip address
+// func (m *MapStore) Clients(address string) ([]*stela.Client, error) {
+// 	m.init()
+// 	m.muClients.Lock()
+// 	defer m.muClients.Unlock()
 
-	// Look for clients matching the address
-	var clients []*stela.Client
-	for _, c := range m.clients {
-		if c.Address == address {
-			clients = append(clients, c)
-		}
-	}
+// 	// Look for clients matching the address
+// 	var clients []*stela.Client
+// 	for _, c := range m.clients {
+// 		if c.Address == address {
+// 			clients = append(clients, c)
+// 		}
+// 	}
 
-	if len(clients) == 0 {
-		return nil, fmt.Errorf("No clients found with the address: %s", address)
-	}
+// 	if len(clients) == 0 {
+// 		return nil, fmt.Errorf("No clients found with the address: %s", address)
+// 	}
 
-	return clients, nil
-}
+// 	return clients, nil
+// }
 
 func (m *MapStore) hasService(s *stela.Service) bool {
 	m.init()

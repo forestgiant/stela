@@ -213,8 +213,34 @@ func (s *Server) DiscoverAll(ctx context.Context, req *stela.DiscoverAllRequest)
 }
 
 // PeerDiscover all services registered under a service name. Ex. "test.services.fg"
+// TODO look into errgroup
 func (s *Server) PeerDiscover(ctx context.Context, req *stela.DiscoverRequest) (*stela.DiscoverResponse, error) {
-	return nil, grpc.Errorf(codes.Unimplemented, "Currently Unimplemented")
+	wg := &sync.WaitGroup{}
+	wg.Add(len(s.peers))
+
+	var results []*stela.ServiceResponse
+	var mu sync.Mutex
+	for _, p := range s.peers {
+		go func(p *node.Node) {
+			defer wg.Done()
+			conn, err := grpc.Dial(p.Values["Address"], grpcOptions()...)
+			if err != nil {
+				return
+			}
+			c := stela.NewStelaClient(conn)
+			resp, err := c.Discover(ctx, req)
+			if err != nil {
+				return
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+			results = append(results, resp.Services...)
+		}(p)
+	}
+	wg.Wait()
+
+	return &stela.DiscoverResponse{Services: results}, nil
 }
 
 // PeerDiscoverOne service registered under a service name.
@@ -232,4 +258,17 @@ func (s *Server) SetPeers(peers []*node.Node) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.peers = peers
+}
+
+func grpcOptions() []grpc.DialOption {
+	var opts []grpc.DialOption
+	// creds, err := credentials.NewClientTLSFromFile(caFile, "")
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// opts = append(opts, grpc.WithTransportCredentials(creds))
+	opts = append(opts, grpc.WithInsecure())
+
+	return opts
 }

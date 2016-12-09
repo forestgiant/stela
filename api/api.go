@@ -1,6 +1,7 @@
 package api
 
 import (
+	"io"
 	"os"
 
 	"github.com/forestgiant/netutil"
@@ -16,7 +17,7 @@ type Client struct {
 	Hostname string
 }
 
-func NewClient(caFile string) (*Client, error) {
+func NewClient(stelaAddress string, caFile string) (*Client, error) {
 	c := &Client{}
 	host, err := os.Hostname()
 	if err != nil {
@@ -33,7 +34,7 @@ func NewClient(caFile string) (*Client, error) {
 
 	// opts = append(opts, grpc.WithTransportCredentials(creds))
 	opts = append(opts, grpc.WithInsecure())
-	c.conn, err = grpc.Dial(stela.DefaultStelaAddress, opts...)
+	c.conn, err = grpc.Dial(stelaAddress, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -47,6 +48,47 @@ func NewClient(caFile string) (*Client, error) {
 	c.ID = resp.ClientId
 
 	return c, nil
+}
+
+func (c *Client) Connect(callback func(s *stela.Service)) error {
+	stream, err := c.rpc.Connect(context.Background(), &stela.ConnectRequest{ClientId: c.ID})
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for {
+			rs, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return
+			}
+			callback(&stela.Service{
+				Name:     rs.Name,
+				Target:   rs.Hostname,
+				Address:  rs.Address,
+				Port:     rs.Port,
+				Priority: rs.Priority,
+			})
+		}
+	}()
+
+	return nil
+}
+
+func (c *Client) Subscribe(serviceName string) error {
+	_, err := c.rpc.Subscribe(context.Background(),
+		&stela.SubscribeRequest{
+			ClientId:    c.ID,
+			ServiceName: serviceName,
+		})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *Client) RegisterService(s *stela.Service) error {

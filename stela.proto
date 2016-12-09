@@ -6,6 +6,7 @@ service Stela {
     rpc AddClient(AddClientRequest) returns (AddClientResponse) {}
     rpc Connect(ConnectRequest) returns (stream ServiceResponse) {}
     rpc Subscribe(SubscribeRequest) returns (SubscribeResponse) {}
+    rpc Unsubscribe(SubscribeRequest) returns (SubscribeResponse) {}
     rpc Register(RegisterRequest) returns (RegisterResponse) {}
     rpc Deregister(RegisterRequest) returns (RegisterResponse) {}
     rpc Discover(DiscoverRequest) returns (DiscoverResponse) {}

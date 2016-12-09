@@ -86,6 +86,20 @@ func (s *Server) Subscribe(ctx context.Context, req *stela.SubscribeRequest) (*s
 	return &stela.SubscribeResponse{}, nil
 }
 
+// Unsubscribe a client to a service name.
+func (s *Server) Unsubscribe(ctx context.Context, req *stela.SubscribeRequest) (*stela.SubscribeResponse, error) {
+	// Look up client that sent the request
+	c, err := s.Store.Client(req.ClientId)
+	if err != nil {
+		return nil, err
+	}
+
+	// Subscribe the client to the serviceName
+	s.Store.Unsubscribe(req.ServiceName, c)
+
+	return &stela.SubscribeResponse{}, nil
+}
+
 // Register a service to a client
 func (s *Server) Register(ctx context.Context, req *stela.RegisterRequest) (*stela.RegisterResponse, error) {
 	// Look up client that sent the request
@@ -213,7 +227,7 @@ func (s *Server) PeerDiscoverAll(ctx context.Context, req *stela.DiscoverAllRequ
 	return nil, grpc.Errorf(codes.Unimplemented, "Currently Unimplemented")
 }
 
-// SetPeers
+// SetPeers sets the peers slice
 func (s *Server) SetPeers(peers []*node.Node) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

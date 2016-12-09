@@ -136,15 +136,14 @@ func TestConnectSubscribe(t *testing.T) {
 		}
 	}
 
-	if err := c.Connect(callback); err != nil {
-		t.Fatal(err)
-	}
-	if err := c.Subscribe(serviceName); err != nil {
+	if err := c.Subscribe(serviceName, callback); err != nil {
 		t.Fatal(err)
 	}
 
 	for _, s := range testServices {
-		c.RegisterService(s)
+		if err := c.RegisterService(s); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// Wait for either a timeout or all the subscribed services to be read
@@ -153,8 +152,16 @@ func TestConnectSubscribe(t *testing.T) {
 		break
 	case <-ctx.Done():
 		if ctx.Err() != nil {
-			t.Fatal("TestSubscribe timed out: ", ctx.Err())
+			t.Fatal("TestConnectSubscribe timed out: ", ctx.Err())
 		}
+	}
+	if err := c.Unsubscribe(serviceName); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify the map is empty
+	if c.callbacks[serviceName] != nil {
+		t.Fatal("callbacks map should be empty after Unsubscribe", c.callbacks)
 	}
 
 	cancel()

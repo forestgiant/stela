@@ -378,99 +378,99 @@ func TestAddClient(t *testing.T) {
 	}
 }
 
-func TestRemoveClients(t *testing.T) {
-	m := MapStore{}
-	serviceName := "subscribe.service.fg"
+// func TestRemoveClients(t *testing.T) {
+// 	m := MapStore{}
+// 	serviceName := "subscribe.service.fg"
 
-	testClients := []*stela.Client{
-		&stela.Client{Address: "127.0.0.1"},
-		&stela.Client{Address: "127.0.0.1"},
-	}
+// 	testClients := []*stela.Client{
+// 		&stela.Client{Address: "127.0.0.1"},
+// 		&stela.Client{Address: "127.0.0.1"},
+// 	}
 
-	testServices := []*stela.Service{
-		&stela.Service{
-			Name:    serviceName,
-			Target:  "jlu.macbook",
-			Address: "127.0.0.1",
-			Port:    9000,
-			Client:  testClients[0],
-		},
-		&stela.Service{
-			Name:    serviceName,
-			Target:  "fg.macbook",
-			Address: "127.0.0.1",
-			Port:    9000,
-			Client:  testClients[0],
-		},
-		&stela.Service{
-			Name:    serviceName,
-			Target:  "jlu.macbook",
-			Address: "localhost",
-			Port:    80,
-			Client:  testClients[0],
-		},
-		&stela.Service{
-			Name:    serviceName,
-			Target:  "my.macbook",
-			Address: "localhost",
-			Port:    80,
-			Client:  testClients[1],
-		},
-	}
+// 	testServices := []*stela.Service{
+// 		&stela.Service{
+// 			Name:    serviceName,
+// 			Target:  "jlu.macbook",
+// 			Address: "127.0.0.1",
+// 			Port:    9000,
+// 			Client:  testClients[0],
+// 		},
+// 		&stela.Service{
+// 			Name:    serviceName,
+// 			Target:  "fg.macbook",
+// 			Address: "127.0.0.1",
+// 			Port:    9000,
+// 			Client:  testClients[0],
+// 		},
+// 		&stela.Service{
+// 			Name:    serviceName,
+// 			Target:  "jlu.macbook",
+// 			Address: "localhost",
+// 			Port:    80,
+// 			Client:  testClients[0],
+// 		},
+// 		&stela.Service{
+// 			Name:    serviceName,
+// 			Target:  "my.macbook",
+// 			Address: "localhost",
+// 			Port:    80,
+// 			Client:  testClients[1],
+// 		},
+// 	}
 
-	// Add the clients
-	for _, c := range testClients {
-		if err := m.AddClient(c); err != nil {
-			t.Fatal("AddClient failed")
-		}
+// 	// Add the clients
+// 	for _, c := range testClients {
+// 		if err := m.AddClient(c); err != nil {
+// 			t.Fatal("AddClient failed")
+// 		}
 
-		// Subscribe to service
-		if err := m.Subscribe(serviceName, c); err != nil {
-			t.Fatal(err)
-		}
-	}
+// 		// Subscribe to service
+// 		if err := m.Subscribe(serviceName, c); err != nil {
+// 			t.Fatal(err)
+// 		}
+// 	}
 
-	// Register services with client
-	for _, s := range testServices {
-		if err := m.Register(s); err != nil {
-			t.Fatal("TestRemoveClient registeration failed")
-		}
-	}
+// 	// Register services with client
+// 	for _, s := range testServices {
+// 		if err := m.Register(s); err != nil {
+// 			t.Fatal("TestRemoveClient registeration failed")
+// 		}
+// 	}
 
-	// Now remove the clients
-	m.RemoveClients(testClients)
+// 	// Now remove the clients
+// 	m.RemoveClients(testClients)
 
-	// Verify the services were removed from m.services
-	for _, v := range m.services {
-		for _, s := range v {
-			// See if any belong to our client
-			for _, c := range testClients {
-				if s.Client.Equal(c) {
-					t.Fatal("Service registered belongs to our client")
-				}
-			}
-		}
-	}
+// 	// Verify the services were removed from m.services
+// 	for _, v := range m.services {
+// 		for _, s := range v {
+// 			// See if any belong to our client
+// 			for _, c := range testClients {
+// 				if s.Client.Equal(c) {
+// 					t.Fatal("Service registered belongs to our client")
+// 				}
+// 			}
+// 		}
+// 	}
 
-	// Verify the client was removed from m.clients
-	for _, rc := range m.clients {
-		for _, c := range testClients {
-			if rc.Equal(c) {
-				t.Fatal("Client shouldn't be registered")
-			}
-		}
-	}
+// 	// Verify the client was removed from m.clients
+// 	for _, rc := range m.clients {
+// 		for _, c := range testClients {
+// 			if rc.Equal(c) {
+// 				t.Fatal("Client shouldn't be registered")
+// 			}
+// 		}
+// 	}
 
-	// Verify client was removed from m.subscriptions
-	subscribers := m.subscribers[serviceName]
-	for _, rc := range subscribers {
-		for _, c := range testClients {
-			if rc.Equal(c) {
-				t.Fatal("Client shouldn't be subscribed")
-			}
-		}
-	}
-}
+// 	// Verify client was removed from m.subscriptions
+// 	subscribers := m.subscribers[serviceName]
+// 	for _, rc := range subscribers {
+// 		for _, c := range testClients {
+// 			if rc.Equal(c) {
+// 				t.Fatal("Client shouldn't be subscribed")
+// 			}
+// 		}
+// 	}
+// }
 
 func TestClient(t *testing.T) {
 	m := MapStore{}
@@ -492,33 +492,33 @@ func TestClient(t *testing.T) {
 	}
 }
 
-func TestClients(t *testing.T) {
-	m := MapStore{}
+// func TestClients(t *testing.T) {
+// 	m := MapStore{}
 
-	testClients := []*stela.Client{
-		&stela.Client{Address: "127.0.0.1"},
-		&stela.Client{Address: "127.0.0.1"},
-	}
+// 	testClients := []*stela.Client{
+// 		&stela.Client{Address: "127.0.0.1"},
+// 		&stela.Client{Address: "127.0.0.1"},
+// 	}
 
-	// Add the clients
-	for _, c := range testClients {
-		if err := m.AddClient(c); err != nil {
-			t.Fatal("AddClient failed")
-		}
-	}
+// 	// Add the clients
+// 	for _, c := range testClients {
+// 		if err := m.AddClient(c); err != nil {
+// 			t.Fatal("AddClient failed")
+// 		}
+// 	}
 
-	clients, err := m.Clients("127.0.0.1")
-	if err != nil {
-		t.Fatal("Clients getter failed")
-	}
+// 	clients, err := m.Clients("127.0.0.1")
+// 	if err != nil {
+// 		t.Fatal("Clients getter failed")
+// 	}
 
-	if !reflect.DeepEqual(testClients, clients) {
-		t.Fatalf("TestClients failed. Expected %v, Received %v", testClients, clients)
-	}
+// 	if !reflect.DeepEqual(testClients, clients) {
+// 		t.Fatalf("TestClients failed. Expected %v, Received %v", testClients, clients)
+// 	}
 
-	// Asking for an address that isn't registered should error
-	clients, err = m.Clients("192.168.1.1")
-	if err == nil {
-		t.Fatal("Clients getter failed")
-	}
-}
+// 	// Asking for an address that isn't registered should error
+// 	clients, err = m.Clients("192.168.1.1")
+// 	if err == nil {
+// 		t.Fatal("Clients getter failed")
+// 	}
+// }

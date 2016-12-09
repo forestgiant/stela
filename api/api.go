@@ -1,8 +1,10 @@
 package api
 
 import (
+	"errors"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/forestgiant/netutil"
 	"gitlab.fg/go/stela"
@@ -12,9 +14,12 @@ import (
 
 type Client struct {
 	stela.Client
-	rpc      stela.StelaClient
-	conn     *grpc.ClientConn
-	Hostname string
+
+	mu        sync.RWMutex
+	rpc       stela.StelaClient
+	conn      *grpc.ClientConn
+	Hostname  string
+	callbacks map[string]func(s *stela.Service)
 }
 
 func NewClient(stelaAddress string, caFile string) (*Client, error) {
@@ -47,10 +52,21 @@ func NewClient(stelaAddress string, caFile string) (*Client, error) {
 	}
 	c.ID = resp.ClientId
 
+	// Connect the client to the server
+	if err := c.connect(); err != nil {
+		return nil, err
+	}
+
 	return c, nil
 }
 
-func (c *Client) Connect(callback func(s *stela.Service)) error {
+func (c *Client) init() {
+	if c.callbacks == nil {
+		c.callbacks = make(map[string]func(s *stela.Service))
+	}
+}
+
+func (c *Client) connect() error {
 	stream, err := c.rpc.Connect(context.Background(), &stela.ConnectRequest{ClientId: c.ID})
 	if err != nil {
 		return err
@@ -65,20 +81,26 @@ func (c *Client) Connect(callback func(s *stela.Service)) error {
 			if err != nil {
 				return
 			}
-			callback(&stela.Service{
-				Name:     rs.Name,
-				Target:   rs.Hostname,
-				Address:  rs.Address,
-				Port:     rs.Port,
-				Priority: rs.Priority,
-			})
+
+			// Send service to callback if any subscribed
+			if c.callbacks != nil {
+				c.mu.RLock()
+				c.callbacks[rs.Name](&stela.Service{
+					Name:     rs.Name,
+					Target:   rs.Hostname,
+					Address:  rs.Address,
+					Port:     rs.Port,
+					Priority: rs.Priority,
+				})
+				c.mu.RUnlock()
+			}
 		}
 	}()
 
 	return nil
 }
 
-func (c *Client) Subscribe(serviceName string) error {
+func (c *Client) Subscribe(serviceName string, callback func(s *stela.Service)) error {
 	_, err := c.rpc.Subscribe(context.Background(),
 		&stela.SubscribeRequest{
 			ClientId:    c.ID,
@@ -87,6 +109,35 @@ func (c *Client) Subscribe(serviceName string) error {
 	if err != nil {
 		return err
 	}
+
+	c.init()
+
+	// Store callback
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.callbacks[serviceName] = callback
+
+	return nil
+}
+
+func (c *Client) Unsubscribe(serviceName string) error {
+	if c.callbacks == nil {
+		return errors.New("Client hasn't subscribed")
+	}
+
+	_, err := c.rpc.Unsubscribe(context.Background(),
+		&stela.SubscribeRequest{
+			ClientId:    c.ID,
+			ServiceName: serviceName,
+		})
+	if err != nil {
+		return err
+	}
+
+	// Delete callback
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.callbacks, serviceName)
 
 	return nil
 }

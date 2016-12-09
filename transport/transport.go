@@ -1,6 +1,10 @@
 package transport
 
 import (
+	"fmt"
+
+	"sync"
+
 	"gitlab.fg/go/disco/node"
 	"gitlab.fg/go/stela"
 	"gitlab.fg/go/stela/store"
@@ -11,8 +15,9 @@ import (
 
 // Server implements the stela.proto service
 type Server struct {
+	mu    sync.Mutex
 	Store store.Store
-	Peers []*node.Node
+	peers []*node.Node
 }
 
 // AddClient adds a client to the store and returns it's id
@@ -40,6 +45,8 @@ func (s *Server) Connect(req *stela.ConnectRequest, stream stela.Stela_ConnectSe
 		return err
 	}
 
+	fmt.Println("connect!", c)
+
 	// Send service to clients on interval for simiulation
 	for {
 		select {
@@ -51,6 +58,8 @@ func (s *Server) Connect(req *stela.ConnectRequest, stream stela.Stela_ConnectSe
 				Port:     rs.Port,
 				Priority: rs.Priority,
 			}
+
+			fmt.Println("send", rs)
 
 			if err := stream.Send(response); err != nil {
 				return err
@@ -202,4 +211,11 @@ func (s *Server) PeerDiscoverOne(ctx context.Context, req *stela.DiscoverRequest
 // PeerDiscoverAll returns all services registered with any stela member peer
 func (s *Server) PeerDiscoverAll(ctx context.Context, req *stela.DiscoverAllRequest) (*stela.DiscoverResponse, error) {
 	return nil, grpc.Errorf(codes.Unimplemented, "Currently Unimplemented")
+}
+
+// SetPeers
+func (s *Server) SetPeers(peers []*node.Node) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.peers = peers
 }

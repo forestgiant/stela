@@ -37,14 +37,15 @@ func main() {
 
 	// Check for command line configuration flags
 	var (
-		stelaAddressUsage  = "Address for stela's gRPC API."
-		stelaAddressPtr    = flag.String("address", stela.DefaultStelaAddress, stelaAddressUsage)
+		stelaPortUsage     = "Port for stela's gRPC API."
+		stelaPortPtr       = flag.Int("port", stela.DefaultStelaPort, stelaPortUsage)
 		multicastPortUsage = "Port used to multicast to other stela members."
 		multicastPortPtr   = flag.Int("multicast", stela.DefaultMulticastPort, multicastPortUsage)
 	)
 	flag.Parse()
 
-	startMessage := fmt.Sprintf("Starting stela gRPC server on: %s and multicasting on port: %d", *stelaAddressPtr, *multicastPortPtr)
+	stelaAddr := fmt.Sprintf("127.0.0.1:%d", *stelaPortPtr)
+	startMessage := fmt.Sprintf("Starting stela gRPC server on: %s and multicasting on port: %d", stelaAddr, *multicastPortPtr)
 	fmt.Println(startMessage)
 
 	// Create store and transport
@@ -75,18 +76,18 @@ func main() {
 	}()
 
 	// Register ourselves as a node
-	stelaAddr, err := netutil.ConvertToLocalIPv4(*stelaAddressPtr)
+	networkAddr, err := netutil.ConvertToLocalIPv4(stelaAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	n := &node.Node{Values: map[string]string{"Address": stelaAddr}, SendInterval: 2 * time.Second}
+	n := &node.Node{Values: map[string]string{"Address": networkAddr}, SendInterval: 2 * time.Second}
 	if err := n.Multicast(ctx, multicastAddr); err != nil {
 		log.Fatal(err)
 	}
 
 	//Setup gRPC server
-	listener, err := net.Listen("tcp", *stelaAddressPtr)
+	listener, err := net.Listen("tcp", stelaAddr)
 	if err != nil {
 		grpclog.Fatalf("failed to listen: %v", err)
 	}

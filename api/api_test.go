@@ -14,7 +14,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	kill, err := startStelaInstance(stela.DefaultStelaAddress, stela.DefaultMulticastPort)
+	kill, err := startStelaInstance(stela.DefaultStelaPort, stela.DefaultMulticastPort)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 
 func TestRegisterAndDiscover(t *testing.T) {
 	// Create a second stela instance
-	kill, err := startStelaInstance("127.0.0.1:9001", stela.DefaultMulticastPort)
+	kill, err := startStelaInstance(9001, stela.DefaultMulticastPort)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,9 +212,9 @@ func equalServices(t *testing.T, s1, s2 []*stela.Service) {
 	}
 }
 
-func startStelaInstance(stelaAddress string, multicastPort int) (kill func(), err error) {
+func startStelaInstance(stelaPort, multicastPort int) (kill func(), err error) {
 	// Run a stela instance
-	cmd := exec.Command("stela", "-address", stelaAddress, "-multicast", fmt.Sprint(multicastPort))
+	cmd := exec.Command("stela", "-port", fmt.Sprint(stelaPort), "-multicast", fmt.Sprint(multicastPort))
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}

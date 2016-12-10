@@ -12,6 +12,9 @@ const (
 	// DefaultStelaAddress by default stela assumes there is a local instance running
 	DefaultStelaAddress = "127.0.0.1:9000"
 
+	// DefaultStelaPort by default stela assumes there is a local instance running
+	DefaultStelaPort = 9000
+
 	// DefaultMulticastAddress is the multicast IPV6 address stela communicates on
 	DefaultMulticastAddress = "[ff12::9000]"
 

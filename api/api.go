@@ -143,7 +143,6 @@ func (c *Client) Unsubscribe(serviceName string) error {
 }
 
 func (c *Client) RegisterService(s *stela.Service) error {
-	s.Address = c.Address
 	s.Target = c.Hostname
 	_, err := c.rpc.Register(context.Background(),
 		&stela.RegisterRequest{
@@ -182,6 +181,43 @@ func (c *Client) DeregisterService(s *stela.Service) error {
 
 func (c *Client) Discover(serviceName string) ([]*stela.Service, error) {
 	resp, err := c.rpc.PeerDiscover(context.Background(), &stela.DiscoverRequest{ServiceName: serviceName})
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert response to stela services
+	var services []*stela.Service
+	for _, ds := range resp.Services {
+		s := &stela.Service{
+			Name:     ds.Name,
+			Target:   ds.Hostname,
+			Address:  ds.Address,
+			Port:     ds.Port,
+			Priority: ds.Priority,
+		}
+		services = append(services, s)
+	}
+
+	return services, nil
+}
+
+func (c *Client) DiscoverOne(serviceName string) (*stela.Service, error) {
+	resp, err := c.rpc.PeerDiscoverOne(context.Background(), &stela.DiscoverRequest{ServiceName: serviceName})
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert response to stela services
+	return &stela.Service{
+		Name:     resp.Name,
+		Target:   resp.Hostname,
+		Address:  resp.Address,
+		Port:     resp.Port,
+		Priority: resp.Priority}, nil
+}
+
+func (c *Client) DiscoverAll() ([]*stela.Service, error) {
+	resp, err := c.rpc.PeerDiscoverAll(context.Background(), &stela.DiscoverAllRequest{})
 	if err != nil {
 		return nil, err
 	}

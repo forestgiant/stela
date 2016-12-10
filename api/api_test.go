@@ -6,10 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"golang.org/x/net/context"
-
-	"time"
 
 	"gitlab.fg/go/stela"
 )
@@ -20,9 +19,6 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 
-	// Give the instance time to start
-	time.Sleep(time.Millisecond * 50)
-
 	t := m.Run()
 
 	kill()
@@ -30,11 +26,40 @@ func TestMain(m *testing.M) {
 }
 
 func TestRegisterAndDiscover(t *testing.T) {
+	// Create a second stela instance
+	kill, err := startStelaInstance("127.0.0.1:9001", stela.DefaultMulticastPort)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer kill()
+
 	serviceName := "apitest.services.fg"
 	c, err := NewClient(stela.DefaultStelaAddress, "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	c2, err := NewClient("127.0.0.1:9001", "../testdata/ca.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c2Service := &stela.Service{
+		Name:    serviceName,
+		Target:  "jlu.macbook",
+		Address: "127.0.0.1",
+		Port:    9001,
+	}
+
+	// Register a single service with c2
+	if err := c2.RegisterService(c2Service); err != nil {
+		t.Fatal(err)
+	}
+
+	var expectedServices []*stela.Service
+
+	// Add c2Service to expected
+	expectedServices = append(expectedServices, c2Service)
 
 	var tests = []struct {
 		service    *stela.Service
@@ -67,7 +92,6 @@ func TestRegisterAndDiscover(t *testing.T) {
 		}, true},
 	}
 
-	expectedServices := make(map[string][]*stela.Service)
 	for i, test := range tests {
 		if err := c.RegisterService(test.service); test.shouldFail != (err != nil) {
 			t.Fatal(i, test, err)
@@ -75,7 +99,7 @@ func TestRegisterAndDiscover(t *testing.T) {
 
 		// Store the successful services into our own expected map
 		if !test.shouldFail {
-			expectedServices[test.service.Name] = append([]*stela.Service{test.service}, expectedServices[test.service.Name]...)
+			expectedServices = append([]*stela.Service{test.service}, expectedServices...)
 		}
 	}
 
@@ -85,15 +109,16 @@ func TestRegisterAndDiscover(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(services) != len(expectedServices[serviceName]) {
+	if len(services) != len(expectedServices) {
 		t.Fatal("Discover failed")
 	}
 
 	// Compare the discovered services
-	equalServices(t, services, expectedServices[serviceName])
+	equalServices(t, services, expectedServices)
 
-	// Deregister all services registered
-	for _, s := range expectedServices[serviceName] {
+	// Deregister all services registered for client.
+	// c2 instance will be killed at end of function
+	for _, s := range expectedServices {
 		c.DeregisterService(s)
 	}
 }
@@ -101,11 +126,13 @@ func TestRegisterAndDiscover(t *testing.T) {
 func TestConnectSubscribe(t *testing.T) {
 	serviceName := "testSubscribe.services.fg"
 
+	// Connect to both instances
 	c, err := NewClient(stela.DefaultStelaAddress, "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// Test services for c
 	var testServices = []*stela.Service{
 		&stela.Service{
 			Name:    serviceName,
@@ -131,6 +158,7 @@ func TestConnectSubscribe(t *testing.T) {
 	var count int
 	callback := func(s *stela.Service) {
 		count++
+		// Total test services
 		if count == len(testServices) {
 			close(waitCh)
 		}
@@ -188,9 +216,11 @@ func startStelaInstance(stelaAddress string, multicastPort int) (kill func(), er
 	// Run a stela instance
 	cmd := exec.Command("stela", "-address", stelaAddress, "-multicast", fmt.Sprint(multicastPort))
 	if err := cmd.Start(); err != nil {
-		fmt.Println("does it start?")
 		return nil, err
 	}
+
+	// Give the instance time to start
+	time.Sleep(time.Millisecond * 100)
 
 	return func() {
 		if err := cmd.Process.Kill(); err != nil {

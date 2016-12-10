@@ -181,7 +181,7 @@ func (c *Client) DeregisterService(s *stela.Service) error {
 }
 
 func (c *Client) Discover(serviceName string) ([]*stela.Service, error) {
-	resp, err := c.rpc.Discover(context.Background(), &stela.DiscoverRequest{ServiceName: serviceName})
+	resp, err := c.rpc.PeerDiscover(context.Background(), &stela.DiscoverRequest{ServiceName: serviceName})
 	if err != nil {
 		return nil, err
 	}

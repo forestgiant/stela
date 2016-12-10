@@ -39,8 +39,8 @@ func main() {
 	var (
 		stelaAddressUsage  = "Address for stela's gRPC API."
 		stelaAddressPtr    = flag.String("address", stela.DefaultStelaAddress, stelaAddressUsage)
-		multicastAddrUsage = "Port used to multicast to other stela members."
-		multicastPortPtr   = flag.Int("multicast", stela.DefaultMulticastPort, multicastAddrUsage)
+		multicastPortUsage = "Port used to multicast to other stela members."
+		multicastPortPtr   = flag.Int("multicast", stela.DefaultMulticastPort, multicastPortUsage)
 	)
 	flag.Parse()
 
@@ -79,6 +79,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	n := &node.Node{Values: map[string]string{"Address": stelaAddr}, SendInterval: 2 * time.Second}
 	if err := n.Multicast(ctx, multicastAddr); err != nil {
 		log.Fatal(err)

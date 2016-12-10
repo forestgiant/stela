@@ -60,16 +60,13 @@ func (s *Server) Connect(req *stela.ConnectRequest, stream stela.Stela_ConnectSe
 				Priority: rs.Priority,
 			}
 
-			fmt.Println("send", rs)
-
 			if err := stream.Send(response); err != nil {
 				return err
 			}
 		case <-ctx.Done():
 			// Remove client from store to cleanup
-			if err := s.Store.RemoveClient(c); err != nil {
-				return err
-			}
+			s.Store.RemoveClient(c)
+
 			return nil
 		}
 	}
@@ -127,6 +124,9 @@ func (s *Server) Register(ctx context.Context, req *stela.RegisterRequest) (*ste
 		return nil, err
 	}
 
+	// Notify all subscribers
+	s.peerNotify(ctx, service, stela.RegisterAction)
+
 	return &stela.RegisterResponse{}, nil
 }
 
@@ -152,7 +152,65 @@ func (s *Server) Deregister(ctx context.Context, req *stela.RegisterRequest) (*s
 	// Register service to store
 	s.Store.Deregister(service)
 
+	// Notify all subscribers
+	s.peerNotify(ctx, service, stela.DeregisterAction)
+
 	return &stela.RegisterResponse{}, nil
+}
+
+// peerNotify calls NotifyClients on all Store peers
+func (s *Server) peerNotify(ctx context.Context, service *stela.Service, action int32) {
+	wg := &sync.WaitGroup{}
+	wg.Add(len(s.peers))
+	for _, p := range s.peers {
+		go func(p *node.Node) {
+			defer wg.Done()
+			address := p.Values["Address"]
+			address, err := convertToLocalIP(address)
+			if err != nil {
+				return
+			}
+
+			// Dial the server
+			conn, err := grpc.Dial(address, GRPCOptions()...)
+			if err != nil {
+				return
+			}
+			defer conn.Close()
+			c := stela.NewStelaClient(conn)
+			notifyReq := &stela.NotifyRequest{
+				Name:     service.Name,
+				Hostname: service.Target,
+				Address:  service.Address,
+				Port:     service.Port,
+				Priority: service.Priority,
+				Action:   action,
+			}
+
+			_, err = c.NotifyClients(ctx, notifyReq)
+			if err != nil {
+				return
+			}
+		}(p)
+	}
+	wg.Wait()
+}
+
+// NotifyClients tells all locally subscribed clients about a service change
+func (s *Server) NotifyClients(ctx context.Context, req *stela.NotifyRequest) (*stela.NotifyResponse, error) {
+	// Convert req to service
+	service := &stela.Service{
+		Name:     req.Name,
+		Target:   req.Hostname,
+		Address:  req.Address,
+		Port:     req.Port,
+		Priority: req.Priority,
+		Action:   req.Action,
+	}
+
+	s.Store.NotifyClients(service)
+
+	return &stela.NotifyResponse{}, nil
 }
 
 // Discover all services registered under a service name. Ex. "test.services.fg"

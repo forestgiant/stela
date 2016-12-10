@@ -9,6 +9,7 @@ service Stela {
     rpc Unsubscribe(SubscribeRequest) returns (SubscribeResponse) {}
     rpc Register(RegisterRequest) returns (RegisterResponse) {}
     rpc Deregister(RegisterRequest) returns (RegisterResponse) {}
+    rpc NotifyClients(NotifyRequest) returns (NotifyResponse){}
     rpc Discover(DiscoverRequest) returns (DiscoverResponse) {}
     rpc DiscoverOne(DiscoverRequest) returns (ServiceResponse) {}
     rpc DiscoverAll(DiscoverAllRequest) returns (DiscoverResponse) {}
@@ -42,6 +43,15 @@ message RegisterRequest {
     int32 priority = 6;
 }
 
+message NotifyRequest {
+    string name = 2;
+    string hostname = 3;
+    string address = 4;
+    int32 port = 5;
+    int32 priority = 6;
+    int32 action = 7;
+}
+
 message DiscoverRequest {
     string service_name = 2;
 }
@@ -64,6 +74,8 @@ message ServiceResponse {
 message SubscribeResponse{}
 
 message RegisterResponse{}
+
+message NotifyResponse{}
 
 message DiscoverResponse {
     repeated ServiceResponse services = 1;

@@ -1,10 +1,10 @@
+// The test currently require two stela instances to be running
+// One at the default setting > stela
+// Another on port 9001 > stela -port 9001
+
 package api
 
 import (
-	"fmt"
-	"log"
-	"os"
-	"os/exec"
 	"testing"
 	"time"
 
@@ -13,25 +13,25 @@ import (
 	"gitlab.fg/go/stela"
 )
 
-func TestMain(m *testing.M) {
-	kill, err := startStelaInstance(stela.DefaultStelaPort, stela.DefaultMulticastPort)
-	if err != nil {
-		log.Fatal(err)
-	}
+// func TestMain(m *testing.M) {
+// 	kill, err := startStelaInstance(stela.DefaultStelaPort, stela.DefaultMulticastPort)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
 
-	t := m.Run()
+// 	t := m.Run()
 
-	kill()
-	os.Exit(t)
-}
+// 	kill()
+// 	os.Exit(t)
+// }
 
 func TestRegisterAndDiscover(t *testing.T) {
 	// Create a second stela instance
-	kill, err := startStelaInstance(9001, stela.DefaultMulticastPort)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer kill()
+	// kill, err := startStelaInstance(9001, stela.DefaultMulticastPort)
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+	// defer kill()
 
 	serviceName := "apitest.services.fg"
 	c, err := NewClient(stela.DefaultStelaAddress, "../testdata/ca.pem")
@@ -174,7 +174,7 @@ func TestRegisterAndDiscover(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(stelas) != 3 {
+	if len(stelas) != 5 {
 		t.Fatal("stela discovery failed", stelas)
 	}
 }
@@ -188,6 +188,12 @@ func TestConnectSubscribe(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer c.Close()
+
+	c2, err := NewClient("127.0.0.1:9001", "../testdata/ca.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c2.Close()
 
 	// Test services for c
 	var testServices = []*stela.Service{
@@ -215,8 +221,8 @@ func TestConnectSubscribe(t *testing.T) {
 	var count int
 	callback := func(s *stela.Service) {
 		count++
-		// Total test services
-		if count == len(testServices) {
+		// Total test services for both clients
+		if count == len(testServices)*2 {
 			close(waitCh)
 		}
 
@@ -226,6 +232,10 @@ func TestConnectSubscribe(t *testing.T) {
 	}
 
 	if err := c.Subscribe(serviceName, callback); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c2.Subscribe(serviceName, callback); err != nil {
 		t.Fatal(err)
 	}
 
@@ -252,7 +262,7 @@ func TestConnectSubscribe(t *testing.T) {
 	if c.callbacks[serviceName] != nil {
 		t.Fatal("callbacks map should be empty after Unsubscribe", c.callbacks)
 	}
-
+	// time.Sleep(time.Millisecond * 500)
 	cancel()
 }
 
@@ -273,19 +283,19 @@ func equalServices(t *testing.T, s1, s2 []*stela.Service) {
 	}
 }
 
-func startStelaInstance(stelaPort, multicastPort int) (kill func(), err error) {
-	// Run a stela instance
-	cmd := exec.Command("stela", "-port", fmt.Sprint(stelaPort), "-multicast", fmt.Sprint(multicastPort))
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
+// func startStelaInstance(stelaPort, multicastPort int) (kill func(), err error) {
+// 	// Run a stela instance
+// 	cmd := exec.Command("stela", "-port", fmt.Sprint(stelaPort), "-multicast", fmt.Sprint(multicastPort))
+// 	if err := cmd.Start(); err != nil {
+// 		return nil, err
+// 	}
 
-	// Give the instance time to start
-	time.Sleep(time.Millisecond * 100)
+// 	// Give the instance time to start
+// 	time.Sleep(time.Millisecond * 100)
 
-	return func() {
-		if err := cmd.Process.Kill(); err != nil {
-			fmt.Println("failed to kill: ", err)
-		}
-	}, nil
-}
+// 	return func() {
+// 		if err := cmd.Process.Kill(); err != nil {
+// 			fmt.Println("failed to kill: ", err)
+// 		}
+// 	}, nil
+// }

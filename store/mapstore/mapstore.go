@@ -67,10 +67,7 @@ func (m *MapStore) Register(s *stela.Service) error {
 	m.services[s.Name] = append([]*stela.Service{s}, m.services[s.Name]...) // Prepend new service
 
 	// Let subscribers know about new service
-	for _, c := range m.subscribers[s.Name] {
-		s.Action = stela.RegisterAction
-		c.Notify(s)
-	}
+	// m.NotifyClients(s, stela.RegisterAction)
 
 	return nil
 }
@@ -78,10 +75,7 @@ func (m *MapStore) Register(s *stela.Service) error {
 // Deregister removes a service from the map and notifies all client subscribers
 func (m *MapStore) Deregister(s *stela.Service) {
 	// Notify clients that a new service is deregistered (for service name)
-	for _, c := range m.subscribers[s.Name] {
-		s.Action = stela.DeregisterAction
-		c.Notify(s)
-	}
+	// m.NotifyClients(s, stela.DeregisterAction)
 
 	m.muServices.Lock()
 	defer m.muServices.Unlock()
@@ -101,6 +95,13 @@ func (m *MapStore) Deregister(s *stela.Service) {
 		delete(m.services, s.Name)
 	} else {
 		m.services[s.Name] = services
+	}
+}
+
+func (m *MapStore) NotifyClients(s *stela.Service) {
+	// Let subscribers know about service change
+	for _, c := range m.subscribers[s.Name] {
+		c.Notify(s)
 	}
 }
 
@@ -214,7 +215,7 @@ func (m *MapStore) AddClient(c *stela.Client) error {
 }
 
 // RemoveClient removes client from the slice m.clients, services it registered and any subscriptions
-func (m *MapStore) RemoveClient(c *stela.Client) error {
+func (m *MapStore) RemoveClient(c *stela.Client) {
 	m.init()
 	m.muClients.Lock()
 	defer m.muClients.Unlock()
@@ -233,7 +234,8 @@ func (m *MapStore) RemoveClient(c *stela.Client) error {
 		for i := len(services) - 1; i >= 0; i-- {
 			s := services[i]
 			if s == nil || s.Client == nil {
-				return errors.New("service or client are nil")
+				// return errors.New("service or client are nil")
+				continue
 			}
 			if s.Client.Equal(c) {
 				// Remove from slice
@@ -268,8 +270,6 @@ func (m *MapStore) RemoveClient(c *stela.Client) error {
 			m.subscribers[k] = v
 		}
 	}
-
-	return nil
 }
 
 // RemoveClients convenience method to RemoveClient for each client in provided slice

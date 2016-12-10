@@ -38,28 +38,51 @@ func TestRegisterAndDiscover(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer c.Close()
 
 	c2, err := NewClient("127.0.0.1:9001", "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer c2.Close()
 
-	c2Service := &stela.Service{
-		Name:    serviceName,
-		Target:  "jlu.macbook",
-		Address: "127.0.0.1",
-		Port:    9001,
+	// Register services with c2
+	c2Services := []*stela.Service{
+		&stela.Service{
+			Name:    serviceName,
+			Target:  "jlu.macbook",
+			Address: "127.0.0.1",
+			Port:    9001,
+		},
+		&stela.Service{
+			Name:    "discoverall.services.fg",
+			Target:  "jlu.macbook",
+			Address: "127.0.0.1",
+			Port:    9001,
+		},
+		&stela.Service{
+			Name:    stela.ServiceName,
+			Target:  "jlu.macbook",
+			Address: "127.0.0.1",
+			Port:    10001,
+		},
+		&stela.Service{
+			Name:    stela.ServiceName,
+			Target:  "jlu.macbook",
+			Address: "127.0.0.1",
+			Port:    10000,
+		},
 	}
-
-	// Register a single service with c2
-	if err := c2.RegisterService(c2Service); err != nil {
-		t.Fatal(err)
+	for _, s := range c2Services {
+		if err := c2.RegisterService(s); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	var expectedServices []*stela.Service
 
 	// Add c2Service to expected
-	expectedServices = append(expectedServices, c2Service)
+	expectedServices = append(expectedServices, c2Services[0])
 
 	var tests = []struct {
 		service    *stela.Service
@@ -109,17 +132,50 @@ func TestRegisterAndDiscover(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(services) != len(expectedServices) {
-		t.Fatal("Discover failed")
+	if len(services) != 3 {
+		t.Fatal("Discover failed", services, expectedServices)
 	}
 
 	// Compare the discovered services
 	equalServices(t, services, expectedServices)
 
-	// Deregister all services registered for client.
-	// c2 instance will be killed at end of function
-	for _, s := range expectedServices {
-		c.DeregisterService(s)
+	// DiscoverAll should return expected plus 1
+	da, err := c.DiscoverAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Remove 1 from c2Services add 2 for each stela instance running
+	if len(da) != len(expectedServices)+len(c2Services)+1 {
+		t.Fatal("DiscoverAll failed", da)
+	}
+
+	// DiscoverOne with c2
+	s, err := c2.DiscoverOne(serviceName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.Valid() {
+		t.Fatal("c2 DiscoveOne was invalid")
+	}
+
+	// Register another stela with c
+	if err := c.RegisterService(&stela.Service{
+		Name:    stela.ServiceName,
+		Target:  "jlu.macbook",
+		Address: "127.0.0.1",
+		Port:    10002,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Discover all stela instances
+	stelas, err := c2.Discover(stela.ServiceName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stelas) != 3 {
+		t.Fatal("stela discovery failed", stelas)
 	}
 }
 
@@ -131,6 +187,7 @@ func TestConnectSubscribe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer c.Close()
 
 	// Test services for c
 	var testServices = []*stela.Service{
@@ -161,6 +218,10 @@ func TestConnectSubscribe(t *testing.T) {
 		// Total test services
 		if count == len(testServices) {
 			close(waitCh)
+		}
+
+		if s.Action != stela.RegisterAction {
+			t.Fatal("Service should be register action")
 		}
 	}
 

@@ -2,6 +2,9 @@ package transport
 
 import (
 	"fmt"
+	"net"
+
+	"github.com/forestgiant/netutil"
 
 	"sync"
 
@@ -223,10 +226,18 @@ func (s *Server) PeerDiscover(ctx context.Context, req *stela.DiscoverRequest) (
 	for _, p := range s.peers {
 		go func(p *node.Node) {
 			defer wg.Done()
-			conn, err := grpc.Dial(p.Values["Address"], grpcOptions()...)
+			address := p.Values["Address"]
+			address, err := convertToLocalIP(address)
 			if err != nil {
 				return
 			}
+
+			// Dial the server
+			conn, err := grpc.Dial(address, grpcOptions()...)
+			if err != nil {
+				return
+			}
+			defer conn.Close()
 			c := stela.NewStelaClient(conn)
 			resp, err := c.Discover(ctx, req)
 			if err != nil {
@@ -271,4 +282,18 @@ func grpcOptions() []grpc.DialOption {
 	opts = append(opts, grpc.WithInsecure())
 
 	return opts
+}
+
+func convertToLocalIP(address string) (string, error) {
+	// Test if the address is this instance and convert to localhost
+	ip, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return "", err
+	}
+	if netutil.IsLocalhost(ip) {
+		address = fmt.Sprintf("%s:%s", "127.0.0.1", port)
+		fmt.Println("local", address)
+	}
+
+	return address, nil
 }

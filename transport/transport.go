@@ -2,6 +2,7 @@ package transport
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 
 	"github.com/forestgiant/netutil"
@@ -13,7 +14,6 @@ import (
 	"gitlab.fg/go/stela/store"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 )
 
 // Server implements the stela.proto service
@@ -48,8 +48,6 @@ func (s *Server) Connect(req *stela.ConnectRequest, stream stela.Stela_ConnectSe
 		return err
 	}
 
-	fmt.Println("connect!", c)
-
 	// Send service to clients on interval for simiulation
 	for {
 		select {
@@ -69,7 +67,9 @@ func (s *Server) Connect(req *stela.ConnectRequest, stream stela.Stela_ConnectSe
 			}
 		case <-ctx.Done():
 			// Remove client from store to cleanup
-			s.Store.RemoveClient(c)
+			if err := s.Store.RemoveClient(c); err != nil {
+				return err
+			}
 			return nil
 		}
 	}
@@ -216,7 +216,6 @@ func (s *Server) DiscoverAll(ctx context.Context, req *stela.DiscoverAllRequest)
 }
 
 // PeerDiscover all services registered under a service name. Ex. "test.services.fg"
-// TODO look into errgroup
 func (s *Server) PeerDiscover(ctx context.Context, req *stela.DiscoverRequest) (*stela.DiscoverResponse, error) {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
@@ -233,7 +232,7 @@ func (s *Server) PeerDiscover(ctx context.Context, req *stela.DiscoverRequest) (
 			}
 
 			// Dial the server
-			conn, err := grpc.Dial(address, grpcOptions()...)
+			conn, err := grpc.Dial(address, GRPCOptions()...)
 			if err != nil {
 				return
 			}
@@ -255,13 +254,80 @@ func (s *Server) PeerDiscover(ctx context.Context, req *stela.DiscoverRequest) (
 }
 
 // PeerDiscoverOne service registered under a service name.
+// TODO Round Robin peers
 func (s *Server) PeerDiscoverOne(ctx context.Context, req *stela.DiscoverRequest) (*stela.ServiceResponse, error) {
-	return nil, grpc.Errorf(codes.Unimplemented, "Currently Unimplemented")
+	wg := &sync.WaitGroup{}
+	wg.Add(len(s.peers))
+
+	var results []*stela.ServiceResponse
+	var mu sync.Mutex
+	for _, p := range s.peers {
+		go func(p *node.Node) {
+			defer wg.Done()
+			address := p.Values["Address"]
+			address, err := convertToLocalIP(address)
+			if err != nil {
+				return
+			}
+
+			// Dial the server
+			conn, err := grpc.Dial(address, GRPCOptions()...)
+			if err != nil {
+				return
+			}
+			defer conn.Close()
+			c := stela.NewStelaClient(conn)
+			resp, err := c.DiscoverOne(ctx, req)
+			if err != nil {
+				return
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+			results = append(results, resp)
+		}(p)
+	}
+	wg.Wait()
+
+	return results[rand.Intn(len(results))], nil
 }
 
 // PeerDiscoverAll returns all services registered with any stela member peer
 func (s *Server) PeerDiscoverAll(ctx context.Context, req *stela.DiscoverAllRequest) (*stela.DiscoverResponse, error) {
-	return nil, grpc.Errorf(codes.Unimplemented, "Currently Unimplemented")
+	wg := &sync.WaitGroup{}
+	wg.Add(len(s.peers))
+
+	var results []*stela.ServiceResponse
+	var mu sync.Mutex
+	for _, p := range s.peers {
+		go func(p *node.Node) {
+			defer wg.Done()
+			address := p.Values["Address"]
+			address, err := convertToLocalIP(address)
+			if err != nil {
+				return
+			}
+
+			// Dial the server
+			conn, err := grpc.Dial(address, GRPCOptions()...)
+			if err != nil {
+				return
+			}
+			defer conn.Close()
+			c := stela.NewStelaClient(conn)
+			resp, err := c.DiscoverAll(ctx, req)
+			if err != nil {
+				return
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+			results = append(results, resp.Services...)
+		}(p)
+	}
+	wg.Wait()
+
+	return &stela.DiscoverResponse{Services: results}, nil
 }
 
 // SetPeers sets the peers slice
@@ -271,7 +337,7 @@ func (s *Server) SetPeers(peers []*node.Node) {
 	s.peers = peers
 }
 
-func grpcOptions() []grpc.DialOption {
+func GRPCOptions() []grpc.DialOption {
 	var opts []grpc.DialOption
 	// creds, err := credentials.NewClientTLSFromFile(caFile, "")
 	// if err != nil {
@@ -292,7 +358,6 @@ func convertToLocalIP(address string) (string, error) {
 	}
 	if netutil.IsLocalhost(ip) {
 		address = fmt.Sprintf("%s:%s", "127.0.0.1", port)
-		fmt.Println("local", address)
 	}
 
 	return address, nil

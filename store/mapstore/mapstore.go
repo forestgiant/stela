@@ -214,7 +214,7 @@ func (m *MapStore) AddClient(c *stela.Client) error {
 }
 
 // RemoveClient removes client from the slice m.clients, services it registered and any subscriptions
-func (m *MapStore) RemoveClient(c *stela.Client) {
+func (m *MapStore) RemoveClient(c *stela.Client) error {
 	m.init()
 	m.muClients.Lock()
 	defer m.muClients.Unlock()
@@ -232,6 +232,9 @@ func (m *MapStore) RemoveClient(c *stela.Client) {
 		// Remove any services that the client registered
 		for i := len(services) - 1; i >= 0; i-- {
 			s := services[i]
+			if s == nil || s.Client == nil {
+				return errors.New("service or client are nil")
+			}
 			if s.Client.Equal(c) {
 				// Remove from slice
 				services = append(services[:i], services[i+1:]...)
@@ -265,6 +268,8 @@ func (m *MapStore) RemoveClient(c *stela.Client) {
 			m.subscribers[k] = v
 		}
 	}
+
+	return nil
 }
 
 // RemoveClients convenience method to RemoveClient for each client in provided slice

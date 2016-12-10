@@ -14,6 +14,6 @@ type Store interface {
 	Client(id string) (*stela.Client, error)
 	// Clients(address string) ([]*stela.Client, error) // Returns all clients by a given ip address
 	AddClient(c *stela.Client) error
-	RemoveClient(c *stela.Client)
+	RemoveClient(c *stela.Client) error
 	// RemoveClients(clients []*stela.Client)
 }

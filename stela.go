@@ -9,6 +9,9 @@ import (
 )
 
 const (
+	// Version of stela
+	Version = "1.0.0"
+
 	// DefaultStelaAddress by default stela assumes there is a local instance running
 	DefaultStelaAddress = "127.0.0.1:9000"
 
@@ -20,6 +23,9 @@ const (
 
 	// DefaultMulticastPort is the default multicast port
 	DefaultMulticastPort = 8053
+
+	// ServiceName is how stela instances are registered as services
+	ServiceName = "stela.services.fg"
 )
 
 // Actions for Service

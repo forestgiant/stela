@@ -44,16 +44,16 @@ message RegisterRequest {
 }
 
 message NotifyRequest {
-    string name = 2;
-    string hostname = 3;
-    string address = 4;
-    int32 port = 5;
-    int32 priority = 6;
-    int32 action = 7;
+    string name = 1;
+    string hostname = 2;
+    string address = 3;
+    int32 port = 4;
+    int32 priority = 5;
+    int32 action = 6;
 }
 
 message DiscoverRequest {
-    string service_name = 2;
+    string service_name = 1;
 }
 
 message DiscoverAllRequest{}

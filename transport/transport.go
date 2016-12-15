@@ -48,7 +48,7 @@ func (s *Server) Connect(req *stela.ConnectRequest, stream stela.Stela_ConnectSe
 		return err
 	}
 
-	// Send service to clients on interval for simiulation
+	// Send services over stream
 	for {
 		select {
 		case rs := <-c.SubscribeCh():

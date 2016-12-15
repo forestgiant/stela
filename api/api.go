@@ -144,6 +144,7 @@ func (c *Client) Unsubscribe(serviceName string) error {
 
 func (c *Client) RegisterService(s *stela.Service) error {
 	s.Target = c.Hostname
+	s.Address = c.Address
 	_, err := c.rpc.Register(context.Background(),
 		&stela.RegisterRequest{
 			ClientId: c.ID,

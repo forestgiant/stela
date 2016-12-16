@@ -73,6 +73,7 @@ func (c *Client) connect() error {
 	}
 
 	go func() {
+		defer c.conn.Close()
 		for {
 			rs, err := stream.Recv()
 			if err == io.EOF {

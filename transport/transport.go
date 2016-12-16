@@ -347,7 +347,14 @@ func (s *Server) PeerDiscoverOne(ctx context.Context, req *stela.DiscoverRequest
 	}
 	wg.Wait()
 
-	return results[rand.Intn(len(results))], nil
+	var index int
+	if len(results) > 1 {
+		index = 1
+	} else {
+		index = rand.Intn(len(results))
+	}
+
+	return results[index], nil
 }
 
 // PeerDiscoverAll returns all services registered with any stela member peer

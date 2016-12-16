@@ -223,8 +223,8 @@ func TestConnectSubscribe(t *testing.T) {
 	var count int
 	callback := func(s *stela.Service) {
 		count++
-		// Total test services for both clients
-		if count == len(testServices)*2 {
+		// Test to make sure c2 receives all services registered with c
+		if count == len(testServices) {
 			close(waitCh)
 		}
 
@@ -233,9 +233,9 @@ func TestConnectSubscribe(t *testing.T) {
 		}
 	}
 
-	if err := c.Subscribe(serviceName, callback); err != nil {
-		t.Fatal(err)
-	}
+	// if err := c.Subscribe(serviceName, callback); err != nil {
+	// 	t.Fatal(err)
+	// }
 
 	if err := c2.Subscribe(serviceName, callback); err != nil {
 		t.Fatal(err)
@@ -256,7 +256,7 @@ func TestConnectSubscribe(t *testing.T) {
 			t.Fatal("TestConnectSubscribe timed out: ", ctx.Err())
 		}
 	}
-	if err := c.Unsubscribe(serviceName); err != nil {
+	if err := c2.Unsubscribe(serviceName); err != nil {
 		t.Fatal(err)
 	}
 

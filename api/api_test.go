@@ -197,6 +197,12 @@ func TestConnectSubscribe(t *testing.T) {
 	}
 	defer c2.Close()
 
+	c3, err := NewClient(ctx, "127.0.0.1:9001", "../testdata/ca.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c3.Close()
+
 	// Test services for c
 	var testServices = []*stela.Service{
 		&stela.Service{
@@ -233,11 +239,27 @@ func TestConnectSubscribe(t *testing.T) {
 		}
 	}
 
+	callback2 := func(s *stela.Service) {
+		count++
+		// Test to make sure c3 receives all services registered with c
+		if count == len(testServices) {
+			close(waitCh)
+		}
+
+		if s.Action != stela.RegisterAction {
+			t.Fatal("Service should be register action")
+		}
+	}
+
 	// if err := c.Subscribe(serviceName, callback); err != nil {
 	// 	t.Fatal(err)
 	// }
 
 	if err := c2.Subscribe(serviceName, callback); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c3.Subscribe(serviceName, callback2); err != nil {
 		t.Fatal(err)
 	}
 

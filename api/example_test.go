@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"log"
 
+	"golang.org/x/net/context"
+
 	"gitlab.fg/go/stela"
 )
 
 func ExampleStelaApi() {
 	// Create stela client
-	client, err := NewClient(stela.DefaultStelaAddress, "../testdata/ca.pem") // The default is localhost
+	client, err := NewClient(context.Background(), stela.DefaultStelaAddress, "../testdata/ca.pem") // The default is localhost
 	if err != nil {
 		log.Fatal(err)
 	}

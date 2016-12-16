@@ -173,7 +173,7 @@ func registerStela(s store.Store, networkAddr string) error {
 }
 
 func discoverStelas() ([]*stela.Service, error) {
-	c, err := api.NewClient(stela.DefaultStelaAddress, "../certs/ca.pem")
+	c, err := api.NewClient(context.Background(), stela.DefaultStelaAddress, "../certs/ca.pem")
 	if err != nil {
 		return nil, err
 	}

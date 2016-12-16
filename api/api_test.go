@@ -32,15 +32,16 @@ func TestRegisterAndDiscover(t *testing.T) {
 	// 	t.Fatal(err)
 	// }
 	// defer kill()
+	ctx := context.Background()
 
 	serviceName := "apitest.services.fg"
-	c, err := NewClient(stela.DefaultStelaAddress, "../testdata/ca.pem")
+	c, err := NewClient(ctx, stela.DefaultStelaAddress, "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
 
-	c2, err := NewClient("127.0.0.1:9001", "../testdata/ca.pem")
+	c2, err := NewClient(ctx, "127.0.0.1:9001", "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,15 +182,16 @@ func TestRegisterAndDiscover(t *testing.T) {
 
 func TestConnectSubscribe(t *testing.T) {
 	serviceName := "testSubscribe.services.fg"
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Millisecond*100)
 
 	// Connect to both instances
-	c, err := NewClient(stela.DefaultStelaAddress, "../testdata/ca.pem")
+	c, err := NewClient(ctx, stela.DefaultStelaAddress, "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
 
-	c2, err := NewClient("127.0.0.1:9001", "../testdata/ca.pem")
+	c2, err := NewClient(ctx, "127.0.0.1:9001", "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +218,7 @@ func TestConnectSubscribe(t *testing.T) {
 			Port:    9002,
 		},
 	}
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Millisecond*100)
+
 	waitCh := make(chan struct{})
 	var count int
 	callback := func(s *stela.Service) {

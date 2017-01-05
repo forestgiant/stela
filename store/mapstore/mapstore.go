@@ -98,8 +98,10 @@ func (m *MapStore) Deregister(s *stela.Service) {
 	}
 }
 
-func (m *MapStore) NotifyClients(s *stela.Service) {
+// NotifyClients let's all locally subscribed clients, on this stela instance, know about service subscription changes
+func (m *MapStore) NotifyClients(s *stela.Service, action int32) {
 	// Let subscribers know about service change
+	s.Action = action
 	for _, c := range m.subscribers[s.Name] {
 		c.Notify(s)
 	}
@@ -226,31 +228,6 @@ func (m *MapStore) RemoveClient(c *stela.Client) {
 		}
 	}
 
-	m.muServices.Lock()
-	defer m.muServices.Unlock()
-	// Remove any services the client registered
-	for k, services := range m.services {
-		// Remove any services that the client registered
-		for i := len(services) - 1; i >= 0; i-- {
-			s := services[i]
-			if s == nil || s.Client == nil {
-				// return errors.New("service or client are nil")
-				continue
-			}
-			if s.Client.Equal(c) {
-				// Remove from slice
-				services = append(services[:i], services[i+1:]...)
-			}
-		}
-
-		// If that was the last service in the slice delete the key
-		if len(services) == 0 {
-			delete(m.services, k)
-		} else {
-			m.services[k] = services
-		}
-	}
-
 	m.muSubscribers.Lock()
 	defer m.muSubscribers.Unlock()
 	// Remove client from Subscribers
@@ -270,6 +247,32 @@ func (m *MapStore) RemoveClient(c *stela.Client) {
 			m.subscribers[k] = v
 		}
 	}
+}
+
+// ServicesByClient returns all services a client has registered
+func (m *MapStore) ServicesByClient(c *stela.Client) []*stela.Service {
+	m.muServices.Lock()
+	defer m.muServices.Unlock()
+
+	var clientServices []*stela.Service
+
+	// Remove any services the client registered
+	for _, services := range m.services {
+		// Remove any services that the client registered
+		for i := len(services) - 1; i >= 0; i-- {
+			s := services[i]
+			if s == nil || s.Client == nil {
+				// return errors.New("service or client are nil")
+				continue
+			}
+			if s.Client.Equal(c) {
+				// Remove from slice
+				clientServices = append(clientServices, s)
+			}
+		}
+	}
+
+	return clientServices
 }
 
 // RemoveClients convenience method to RemoveClient for each client in provided slice

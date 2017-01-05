@@ -9,6 +9,8 @@ import (
 
 	"sync"
 
+	"time"
+
 	"gitlab.fg/go/disco/node"
 	"gitlab.fg/go/stela"
 	"gitlab.fg/go/stela/store"
@@ -58,12 +60,22 @@ func (s *Server) Connect(req *stela.ConnectRequest, stream stela.Stela_ConnectSe
 				Address:  rs.Address,
 				Port:     rs.Port,
 				Priority: rs.Priority,
+				Action:   rs.Action,
 			}
 
 			if err := stream.Send(response); err != nil {
 				return err
 			}
 		case <-ctx.Done():
+			// Remove all services the client registered
+			registeredServices := s.Store.ServicesByClient(c)
+			for _, rs := range registeredServices {
+				s.Store.Deregister(rs)
+
+				// Notify all peers about the deregistered service
+				s.peerNotify(rs)
+			}
+
 			// Remove client from store to cleanup
 			s.Store.RemoveClient(c)
 
@@ -125,7 +137,7 @@ func (s *Server) Register(ctx context.Context, req *stela.RegisterRequest) (*ste
 	}
 
 	// Notify all subscribers
-	s.peerNotify(ctx, service, stela.RegisterAction)
+	s.peerNotify(service)
 
 	return &stela.RegisterResponse{}, nil
 }
@@ -153,42 +165,60 @@ func (s *Server) Deregister(ctx context.Context, req *stela.RegisterRequest) (*s
 	s.Store.Deregister(service)
 
 	// Notify all subscribers
-	s.peerNotify(ctx, service, stela.DeregisterAction)
+	s.peerNotify(service)
 
 	return &stela.RegisterResponse{}, nil
 }
 
 // peerNotify calls NotifyClients on all Store peers
-func (s *Server) peerNotify(ctx context.Context, service *stela.Service, action int32) {
+func (s *Server) peerNotify(service *stela.Service) {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 	for _, p := range s.peers {
 		go func(p *node.Node) {
 			defer wg.Done()
-			address := p.Values["Address"]
-			address, err := convertToLocalIP(address)
-			if err != nil {
-				return
-			}
+			// Create context with timeout
+			ctx, cancelFunc := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancelFunc()
+			waitCh := make(chan struct{})
 
-			// Dial the server
-			conn, err := grpc.Dial(address, GRPCOptions()...)
-			if err != nil {
-				return
-			}
-			defer conn.Close()
-			c := stela.NewStelaClient(conn)
-			notifyReq := &stela.NotifyRequest{
-				Name:     service.Name,
-				Hostname: service.Target,
-				Address:  service.Address,
-				Port:     service.Port,
-				Priority: service.Priority,
-				Action:   action,
-			}
+			go func() {
+				address := p.Values["Address"]
+				address, err := convertToLocalIP(address)
+				if err != nil {
+					return
+				}
 
-			_, err = c.NotifyClients(ctx, notifyReq)
-			if err != nil {
+				// Dial the server
+				conn, err := grpc.Dial(address, gRPCOptions()...)
+				if err != nil {
+					return
+				}
+				defer conn.Close()
+				c := stela.NewStelaClient(conn)
+				notifyReq := &stela.NotifyRequest{
+					Name:     service.Name,
+					Hostname: service.Target,
+					Address:  service.Address,
+					Port:     service.Port,
+					Priority: service.Priority,
+					Action:   service.Action,
+				}
+
+				_, err = c.NotifyClients(ctx, notifyReq)
+				if err != nil {
+					fmt.Println("peerNotify err,", err)
+					return
+				}
+
+				close(waitCh)
+			}()
+
+			// Block until the context times out or the client is notified
+			select {
+			case <-waitCh:
+				return
+			case <-ctx.Done():
 				return
 			}
 		}(p)
@@ -208,7 +238,7 @@ func (s *Server) NotifyClients(ctx context.Context, req *stela.NotifyRequest) (*
 		Action:   req.Action,
 	}
 
-	s.Store.NotifyClients(service)
+	s.Store.NotifyClients(service, service.Action)
 
 	return &stela.NotifyResponse{}, nil
 }
@@ -278,6 +308,8 @@ func (s *Server) PeerDiscover(ctx context.Context, req *stela.DiscoverRequest) (
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 
+	// Create new contextWithTimeout from ctx
+
 	var results []*stela.ServiceResponse
 	var mu sync.Mutex
 	for _, p := range s.peers {
@@ -290,7 +322,7 @@ func (s *Server) PeerDiscover(ctx context.Context, req *stela.DiscoverRequest) (
 			}
 
 			// Dial the server
-			conn, err := grpc.Dial(address, GRPCOptions()...)
+			conn, err := grpc.Dial(address, gRPCOptions()...)
 			if err != nil {
 				return
 			}
@@ -329,7 +361,7 @@ func (s *Server) PeerDiscoverOne(ctx context.Context, req *stela.DiscoverRequest
 			}
 
 			// Dial the server
-			conn, err := grpc.Dial(address, GRPCOptions()...)
+			conn, err := grpc.Dial(address, gRPCOptions()...)
 			if err != nil {
 				return
 			}
@@ -374,7 +406,7 @@ func (s *Server) PeerDiscoverAll(ctx context.Context, req *stela.DiscoverAllRequ
 			}
 
 			// Dial the server
-			conn, err := grpc.Dial(address, GRPCOptions()...)
+			conn, err := grpc.Dial(address, gRPCOptions()...)
 			if err != nil {
 				return
 			}
@@ -402,7 +434,7 @@ func (s *Server) SetPeers(peers []*node.Node) {
 	s.peers = peers
 }
 
-func GRPCOptions() []grpc.DialOption {
+func gRPCOptions() []grpc.DialOption {
 	var opts []grpc.DialOption
 	// creds, err := credentials.NewClientTLSFromFile(caFile, "")
 	// if err != nil {

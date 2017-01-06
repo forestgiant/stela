@@ -154,11 +154,13 @@ func (c *Client) RegisterService(ctx context.Context, s *stela.Service) error {
 	_, err := c.rpc.Register(ctx,
 		&stela.RegisterRequest{
 			ClientId: c.ID,
-			Name:     s.Name,
-			Hostname: s.Target,
-			Address:  s.Address,
-			Port:     s.Port,
-			Priority: s.Priority,
+			Service: &stela.ServiceMessage{
+				Name:     s.Name,
+				Hostname: s.Target,
+				Address:  s.Address,
+				Port:     s.Port,
+				Priority: s.Priority,
+			},
 		})
 	if err != nil {
 		return err
@@ -173,11 +175,13 @@ func (c *Client) DeregisterService(ctx context.Context, s *stela.Service) error 
 	_, err := c.rpc.Deregister(ctx,
 		&stela.RegisterRequest{
 			ClientId: c.ID,
-			Name:     s.Name,
-			Hostname: s.Target,
-			Address:  s.Address,
-			Port:     s.Port,
-			Priority: s.Priority,
+			Service: &stela.ServiceMessage{
+				Name:     s.Name,
+				Hostname: s.Target,
+				Address:  s.Address,
+				Port:     s.Port,
+				Priority: s.Priority,
+			},
 		})
 	if err != nil {
 		return err

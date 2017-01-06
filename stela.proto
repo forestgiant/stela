@@ -4,20 +4,29 @@ package stela;
 
 service Stela {
     rpc AddClient(AddClientRequest) returns (AddClientResponse) {}
-    rpc Connect(ConnectRequest) returns (stream ServiceResponse) {}
+    rpc Connect(ConnectRequest) returns (stream ServiceMessage) {}
     rpc Subscribe(SubscribeRequest) returns (SubscribeResponse) {}
     rpc Unsubscribe(SubscribeRequest) returns (SubscribeResponse) {}
     rpc Register(RegisterRequest) returns (RegisterResponse) {}
     rpc Deregister(RegisterRequest) returns (RegisterResponse) {}
-    rpc NotifyClients(NotifyRequest) returns (NotifyResponse){}
+    rpc NotifyClients(ServiceMessage) returns (NotifyResponse){}
     rpc Discover(DiscoverRequest) returns (DiscoverResponse) {}
-    rpc DiscoverOne(DiscoverRequest) returns (ServiceResponse) {}
+    rpc DiscoverOne(DiscoverRequest) returns (ServiceMessage) {}
     rpc DiscoverAll(DiscoverAllRequest) returns (DiscoverResponse) {}
     
     // Peer related RPC is used to request all peer members
     rpc PeerDiscover(DiscoverRequest) returns (DiscoverResponse) {}
-    rpc PeerDiscoverOne(DiscoverRequest) returns (ServiceResponse) {}
+    rpc PeerDiscoverOne(DiscoverRequest) returns (ServiceMessage) {}
     rpc PeerDiscoverAll(DiscoverAllRequest) returns (DiscoverResponse) {}
+}
+
+message ServiceMessage {
+    string name = 1;
+    string hostname = 2;
+    string address = 3;
+    int32 port = 4;
+    int32 priority = 5;
+    int32 action = 6;
 }
 
 // Request
@@ -36,20 +45,7 @@ message SubscribeRequest {
 
 message RegisterRequest {
     string client_id = 1;
-    string name = 2;
-    string hostname = 3;
-    string address = 4;
-    int32 port = 5;
-    int32 priority = 6;
-}
-
-message NotifyRequest {
-    string name = 1;
-    string hostname = 2;
-    string address = 3;
-    int32 port = 4;
-    int32 priority = 5;
-    int32 action = 6;
+    ServiceMessage service = 2;
 }
 
 message DiscoverRequest {
@@ -63,15 +59,6 @@ message AddClientResponse {
     string client_id = 1;
 }
 
-message ServiceResponse {
-    string name = 1;
-    string hostname = 2;
-    string address = 3;
-    int32 port = 4;
-    int32 priority = 5;
-    int32 action = 6;
-}
-
 message SubscribeResponse{}
 
 message RegisterResponse{}
@@ -79,5 +66,5 @@ message RegisterResponse{}
 message NotifyResponse{}
 
 message DiscoverResponse {
-    repeated ServiceResponse services = 1;
+    repeated ServiceMessage services = 1;
 }

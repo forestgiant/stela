@@ -55,7 +55,7 @@ func (s *Server) Connect(req *stela.ConnectRequest, stream stela.Stela_ConnectSe
 	for {
 		select {
 		case rs := <-c.SubscribeCh():
-			response := &stela.ServiceResponse{
+			response := &stela.ServiceMessage{
 				Name:     rs.Name,
 				Hostname: rs.Target,
 				Address:  rs.Address,
@@ -124,11 +124,11 @@ func (s *Server) Register(ctx context.Context, req *stela.RegisterRequest) (*ste
 
 	// Convert req to service
 	service := &stela.Service{
-		Name:     req.Name,
-		Target:   req.Hostname,
-		Address:  req.Address,
-		Port:     req.Port,
-		Priority: req.Priority,
+		Name:     req.Service.Name,
+		Target:   req.Service.Hostname,
+		Address:  req.Service.Address,
+		Port:     req.Service.Port,
+		Priority: req.Service.Priority,
 		Action:   stela.RegisterAction,
 		Client:   c,
 	}
@@ -155,11 +155,11 @@ func (s *Server) Deregister(ctx context.Context, req *stela.RegisterRequest) (*s
 
 	// Convert req to service
 	service := &stela.Service{
-		Name:     req.Name,
-		Target:   req.Hostname,
-		Address:  req.Address,
-		Port:     req.Port,
-		Priority: req.Priority,
+		Name:     req.Service.Name,
+		Target:   req.Service.Hostname,
+		Address:  req.Service.Address,
+		Port:     req.Service.Port,
+		Priority: req.Service.Priority,
 		Action:   stela.RegisterAction,
 		Client:   c,
 	}
@@ -202,7 +202,7 @@ func (s *Server) peerNotify(service *stela.Service) {
 				}
 				defer conn.Close()
 				c := stela.NewStelaClient(conn)
-				notifyReq := &stela.NotifyRequest{
+				notifyReq := &stela.ServiceMessage{
 					Name:     service.Name,
 					Hostname: service.Target,
 					Address:  service.Address,
@@ -231,7 +231,7 @@ func (s *Server) peerNotify(service *stela.Service) {
 }
 
 // NotifyClients tells all locally subscribed clients about a service change
-func (s *Server) NotifyClients(ctx context.Context, req *stela.NotifyRequest) (*stela.NotifyResponse, error) {
+func (s *Server) NotifyClients(ctx context.Context, req *stela.ServiceMessage) (*stela.NotifyResponse, error) {
 	// Convert req to service
 	service := &stela.Service{
 		Name:     req.Name,
@@ -254,10 +254,10 @@ func (s *Server) Discover(ctx context.Context, req *stela.DiscoverRequest) (*ste
 		return nil, err
 	}
 
-	// Convert stela.Service struct to stela.ServiceResponse
-	var srs []*stela.ServiceResponse
+	// Convert stela.Service struct to stela.ServiceMessage
+	var srs []*stela.ServiceMessage
 	for _, ds := range services {
-		sr := &stela.ServiceResponse{
+		sr := &stela.ServiceMessage{
 			Name:     ds.Name,
 			Hostname: ds.Target,
 			Address:  ds.Address,
@@ -271,14 +271,14 @@ func (s *Server) Discover(ctx context.Context, req *stela.DiscoverRequest) (*ste
 }
 
 // DiscoverOne service registered under a service name.
-func (s *Server) DiscoverOne(ctx context.Context, req *stela.DiscoverRequest) (*stela.ServiceResponse, error) {
+func (s *Server) DiscoverOne(ctx context.Context, req *stela.DiscoverRequest) (*stela.ServiceMessage, error) {
 	service, err := s.Store.DiscoverOne(req.ServiceName)
 	if err != nil {
 		return nil, err
 	}
 
 	// Convert stela.Service struct to stela.ServiceResponse
-	return &stela.ServiceResponse{
+	return &stela.ServiceMessage{
 		Name:     service.Name,
 		Hostname: service.Target,
 		Address:  service.Address,
@@ -292,9 +292,9 @@ func (s *Server) DiscoverAll(ctx context.Context, req *stela.DiscoverAllRequest)
 	services := s.Store.DiscoverAll()
 
 	// Convert stela.Service struct to stela.ServiceResponse
-	var srs []*stela.ServiceResponse
+	var srs []*stela.ServiceMessage
 	for _, ds := range services {
-		sr := &stela.ServiceResponse{
+		sr := &stela.ServiceMessage{
 			Name:     ds.Name,
 			Hostname: ds.Target,
 			Address:  ds.Address,
@@ -312,7 +312,7 @@ func (s *Server) PeerDiscover(ctx context.Context, req *stela.DiscoverRequest) (
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 
-	var results []*stela.ServiceResponse
+	var results []*stela.ServiceMessage
 	var mu sync.Mutex
 	for _, p := range s.peers {
 		go func(p *node.Node) {
@@ -365,11 +365,11 @@ func (s *Server) PeerDiscover(ctx context.Context, req *stela.DiscoverRequest) (
 
 // PeerDiscoverOne service registered under a service name.
 // TODO Round Robin peers
-func (s *Server) PeerDiscoverOne(ctx context.Context, req *stela.DiscoverRequest) (*stela.ServiceResponse, error) {
+func (s *Server) PeerDiscoverOne(ctx context.Context, req *stela.DiscoverRequest) (*stela.ServiceMessage, error) {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 
-	var results []*stela.ServiceResponse
+	var results []*stela.ServiceMessage
 	var mu sync.Mutex
 	for _, p := range s.peers {
 		go func(p *node.Node) {
@@ -432,7 +432,7 @@ func (s *Server) PeerDiscoverAll(ctx context.Context, req *stela.DiscoverAllRequ
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 
-	var results []*stela.ServiceResponse
+	var results []*stela.ServiceMessage
 	var mu sync.Mutex
 	for _, p := range s.peers {
 		go func(p *node.Node) {

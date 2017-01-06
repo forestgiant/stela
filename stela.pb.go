@@ -9,15 +9,14 @@ It is generated from these files:
 	stela.proto
 
 It has these top-level messages:
+	ServiceMessage
 	AddClientRequest
 	ConnectRequest
 	SubscribeRequest
 	RegisterRequest
-	NotifyRequest
 	DiscoverRequest
 	DiscoverAllRequest
 	AddClientResponse
-	ServiceResponse
 	SubscribeResponse
 	RegisterResponse
 	NotifyResponse
@@ -45,6 +44,62 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
+type ServiceMessage struct {
+	Name     string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Hostname string `protobuf:"bytes,2,opt,name=hostname" json:"hostname,omitempty"`
+	Address  string `protobuf:"bytes,3,opt,name=address" json:"address,omitempty"`
+	Port     int32  `protobuf:"varint,4,opt,name=port" json:"port,omitempty"`
+	Priority int32  `protobuf:"varint,5,opt,name=priority" json:"priority,omitempty"`
+	Action   int32  `protobuf:"varint,6,opt,name=action" json:"action,omitempty"`
+}
+
+func (m *ServiceMessage) Reset()                    { *m = ServiceMessage{} }
+func (m *ServiceMessage) String() string            { return proto.CompactTextString(m) }
+func (*ServiceMessage) ProtoMessage()               {}
+func (*ServiceMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+
+func (m *ServiceMessage) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *ServiceMessage) GetHostname() string {
+	if m != nil {
+		return m.Hostname
+	}
+	return ""
+}
+
+func (m *ServiceMessage) GetAddress() string {
+	if m != nil {
+		return m.Address
+	}
+	return ""
+}
+
+func (m *ServiceMessage) GetPort() int32 {
+	if m != nil {
+		return m.Port
+	}
+	return 0
+}
+
+func (m *ServiceMessage) GetPriority() int32 {
+	if m != nil {
+		return m.Priority
+	}
+	return 0
+}
+
+func (m *ServiceMessage) GetAction() int32 {
+	if m != nil {
+		return m.Action
+	}
+	return 0
+}
+
 // Request
 type AddClientRequest struct {
 	ClientAddress string `protobuf:"bytes,1,opt,name=client_address,json=clientAddress" json:"client_address,omitempty"`
@@ -53,7 +108,7 @@ type AddClientRequest struct {
 func (m *AddClientRequest) Reset()                    { *m = AddClientRequest{} }
 func (m *AddClientRequest) String() string            { return proto.CompactTextString(m) }
 func (*AddClientRequest) ProtoMessage()               {}
-func (*AddClientRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (*AddClientRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 func (m *AddClientRequest) GetClientAddress() string {
 	if m != nil {
@@ -69,7 +124,7 @@ type ConnectRequest struct {
 func (m *ConnectRequest) Reset()                    { *m = ConnectRequest{} }
 func (m *ConnectRequest) String() string            { return proto.CompactTextString(m) }
 func (*ConnectRequest) ProtoMessage()               {}
-func (*ConnectRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (*ConnectRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 func (m *ConnectRequest) GetClientId() string {
 	if m != nil {
@@ -86,7 +141,7 @@ type SubscribeRequest struct {
 func (m *SubscribeRequest) Reset()                    { *m = SubscribeRequest{} }
 func (m *SubscribeRequest) String() string            { return proto.CompactTextString(m) }
 func (*SubscribeRequest) ProtoMessage()               {}
-func (*SubscribeRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+func (*SubscribeRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 func (m *SubscribeRequest) GetClientId() string {
 	if m != nil {
@@ -103,18 +158,14 @@ func (m *SubscribeRequest) GetServiceName() string {
 }
 
 type RegisterRequest struct {
-	ClientId string `protobuf:"bytes,1,opt,name=client_id,json=clientId" json:"client_id,omitempty"`
-	Name     string `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
-	Hostname string `protobuf:"bytes,3,opt,name=hostname" json:"hostname,omitempty"`
-	Address  string `protobuf:"bytes,4,opt,name=address" json:"address,omitempty"`
-	Port     int32  `protobuf:"varint,5,opt,name=port" json:"port,omitempty"`
-	Priority int32  `protobuf:"varint,6,opt,name=priority" json:"priority,omitempty"`
+	ClientId string          `protobuf:"bytes,1,opt,name=client_id,json=clientId" json:"client_id,omitempty"`
+	Service  *ServiceMessage `protobuf:"bytes,2,opt,name=service" json:"service,omitempty"`
 }
 
 func (m *RegisterRequest) Reset()                    { *m = RegisterRequest{} }
 func (m *RegisterRequest) String() string            { return proto.CompactTextString(m) }
 func (*RegisterRequest) ProtoMessage()               {}
-func (*RegisterRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+func (*RegisterRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
 func (m *RegisterRequest) GetClientId() string {
 	if m != nil {
@@ -123,95 +174,11 @@ func (m *RegisterRequest) GetClientId() string {
 	return ""
 }
 
-func (m *RegisterRequest) GetName() string {
+func (m *RegisterRequest) GetService() *ServiceMessage {
 	if m != nil {
-		return m.Name
+		return m.Service
 	}
-	return ""
-}
-
-func (m *RegisterRequest) GetHostname() string {
-	if m != nil {
-		return m.Hostname
-	}
-	return ""
-}
-
-func (m *RegisterRequest) GetAddress() string {
-	if m != nil {
-		return m.Address
-	}
-	return ""
-}
-
-func (m *RegisterRequest) GetPort() int32 {
-	if m != nil {
-		return m.Port
-	}
-	return 0
-}
-
-func (m *RegisterRequest) GetPriority() int32 {
-	if m != nil {
-		return m.Priority
-	}
-	return 0
-}
-
-type NotifyRequest struct {
-	Name     string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Hostname string `protobuf:"bytes,2,opt,name=hostname" json:"hostname,omitempty"`
-	Address  string `protobuf:"bytes,3,opt,name=address" json:"address,omitempty"`
-	Port     int32  `protobuf:"varint,4,opt,name=port" json:"port,omitempty"`
-	Priority int32  `protobuf:"varint,5,opt,name=priority" json:"priority,omitempty"`
-	Action   int32  `protobuf:"varint,6,opt,name=action" json:"action,omitempty"`
-}
-
-func (m *NotifyRequest) Reset()                    { *m = NotifyRequest{} }
-func (m *NotifyRequest) String() string            { return proto.CompactTextString(m) }
-func (*NotifyRequest) ProtoMessage()               {}
-func (*NotifyRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
-
-func (m *NotifyRequest) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-func (m *NotifyRequest) GetHostname() string {
-	if m != nil {
-		return m.Hostname
-	}
-	return ""
-}
-
-func (m *NotifyRequest) GetAddress() string {
-	if m != nil {
-		return m.Address
-	}
-	return ""
-}
-
-func (m *NotifyRequest) GetPort() int32 {
-	if m != nil {
-		return m.Port
-	}
-	return 0
-}
-
-func (m *NotifyRequest) GetPriority() int32 {
-	if m != nil {
-		return m.Priority
-	}
-	return 0
-}
-
-func (m *NotifyRequest) GetAction() int32 {
-	if m != nil {
-		return m.Action
-	}
-	return 0
+	return nil
 }
 
 type DiscoverRequest struct {
@@ -255,69 +222,13 @@ func (m *AddClientResponse) GetClientId() string {
 	return ""
 }
 
-type ServiceResponse struct {
-	Name     string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Hostname string `protobuf:"bytes,2,opt,name=hostname" json:"hostname,omitempty"`
-	Address  string `protobuf:"bytes,3,opt,name=address" json:"address,omitempty"`
-	Port     int32  `protobuf:"varint,4,opt,name=port" json:"port,omitempty"`
-	Priority int32  `protobuf:"varint,5,opt,name=priority" json:"priority,omitempty"`
-	Action   int32  `protobuf:"varint,6,opt,name=action" json:"action,omitempty"`
-}
-
-func (m *ServiceResponse) Reset()                    { *m = ServiceResponse{} }
-func (m *ServiceResponse) String() string            { return proto.CompactTextString(m) }
-func (*ServiceResponse) ProtoMessage()               {}
-func (*ServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
-
-func (m *ServiceResponse) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-func (m *ServiceResponse) GetHostname() string {
-	if m != nil {
-		return m.Hostname
-	}
-	return ""
-}
-
-func (m *ServiceResponse) GetAddress() string {
-	if m != nil {
-		return m.Address
-	}
-	return ""
-}
-
-func (m *ServiceResponse) GetPort() int32 {
-	if m != nil {
-		return m.Port
-	}
-	return 0
-}
-
-func (m *ServiceResponse) GetPriority() int32 {
-	if m != nil {
-		return m.Priority
-	}
-	return 0
-}
-
-func (m *ServiceResponse) GetAction() int32 {
-	if m != nil {
-		return m.Action
-	}
-	return 0
-}
-
 type SubscribeResponse struct {
 }
 
 func (m *SubscribeResponse) Reset()                    { *m = SubscribeResponse{} }
 func (m *SubscribeResponse) String() string            { return proto.CompactTextString(m) }
 func (*SubscribeResponse) ProtoMessage()               {}
-func (*SubscribeResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
+func (*SubscribeResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
 type RegisterResponse struct {
 }
@@ -325,7 +236,7 @@ type RegisterResponse struct {
 func (m *RegisterResponse) Reset()                    { *m = RegisterResponse{} }
 func (m *RegisterResponse) String() string            { return proto.CompactTextString(m) }
 func (*RegisterResponse) ProtoMessage()               {}
-func (*RegisterResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
+func (*RegisterResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
 type NotifyResponse struct {
 }
@@ -333,18 +244,18 @@ type NotifyResponse struct {
 func (m *NotifyResponse) Reset()                    { *m = NotifyResponse{} }
 func (m *NotifyResponse) String() string            { return proto.CompactTextString(m) }
 func (*NotifyResponse) ProtoMessage()               {}
-func (*NotifyResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
+func (*NotifyResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
 type DiscoverResponse struct {
-	Services []*ServiceResponse `protobuf:"bytes,1,rep,name=services" json:"services,omitempty"`
+	Services []*ServiceMessage `protobuf:"bytes,1,rep,name=services" json:"services,omitempty"`
 }
 
 func (m *DiscoverResponse) Reset()                    { *m = DiscoverResponse{} }
 func (m *DiscoverResponse) String() string            { return proto.CompactTextString(m) }
 func (*DiscoverResponse) ProtoMessage()               {}
-func (*DiscoverResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
+func (*DiscoverResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
 
-func (m *DiscoverResponse) GetServices() []*ServiceResponse {
+func (m *DiscoverResponse) GetServices() []*ServiceMessage {
 	if m != nil {
 		return m.Services
 	}
@@ -352,15 +263,14 @@ func (m *DiscoverResponse) GetServices() []*ServiceResponse {
 }
 
 func init() {
+	proto.RegisterType((*ServiceMessage)(nil), "stela.ServiceMessage")
 	proto.RegisterType((*AddClientRequest)(nil), "stela.AddClientRequest")
 	proto.RegisterType((*ConnectRequest)(nil), "stela.ConnectRequest")
 	proto.RegisterType((*SubscribeRequest)(nil), "stela.SubscribeRequest")
 	proto.RegisterType((*RegisterRequest)(nil), "stela.RegisterRequest")
-	proto.RegisterType((*NotifyRequest)(nil), "stela.NotifyRequest")
 	proto.RegisterType((*DiscoverRequest)(nil), "stela.DiscoverRequest")
 	proto.RegisterType((*DiscoverAllRequest)(nil), "stela.DiscoverAllRequest")
 	proto.RegisterType((*AddClientResponse)(nil), "stela.AddClientResponse")
-	proto.RegisterType((*ServiceResponse)(nil), "stela.ServiceResponse")
 	proto.RegisterType((*SubscribeResponse)(nil), "stela.SubscribeResponse")
 	proto.RegisterType((*RegisterResponse)(nil), "stela.RegisterResponse")
 	proto.RegisterType((*NotifyResponse)(nil), "stela.NotifyResponse")
@@ -384,13 +294,13 @@ type StelaClient interface {
 	Unsubscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (*SubscribeResponse, error)
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	Deregister(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
-	NotifyClients(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyResponse, error)
+	NotifyClients(ctx context.Context, in *ServiceMessage, opts ...grpc.CallOption) (*NotifyResponse, error)
 	Discover(ctx context.Context, in *DiscoverRequest, opts ...grpc.CallOption) (*DiscoverResponse, error)
-	DiscoverOne(ctx context.Context, in *DiscoverRequest, opts ...grpc.CallOption) (*ServiceResponse, error)
+	DiscoverOne(ctx context.Context, in *DiscoverRequest, opts ...grpc.CallOption) (*ServiceMessage, error)
 	DiscoverAll(ctx context.Context, in *DiscoverAllRequest, opts ...grpc.CallOption) (*DiscoverResponse, error)
 	// Peer related RPC is used to request all peer members
 	PeerDiscover(ctx context.Context, in *DiscoverRequest, opts ...grpc.CallOption) (*DiscoverResponse, error)
-	PeerDiscoverOne(ctx context.Context, in *DiscoverRequest, opts ...grpc.CallOption) (*ServiceResponse, error)
+	PeerDiscoverOne(ctx context.Context, in *DiscoverRequest, opts ...grpc.CallOption) (*ServiceMessage, error)
 	PeerDiscoverAll(ctx context.Context, in *DiscoverAllRequest, opts ...grpc.CallOption) (*DiscoverResponse, error)
 }
 
@@ -427,7 +337,7 @@ func (c *stelaClient) Connect(ctx context.Context, in *ConnectRequest, opts ...g
 }
 
 type Stela_ConnectClient interface {
-	Recv() (*ServiceResponse, error)
+	Recv() (*ServiceMessage, error)
 	grpc.ClientStream
 }
 
@@ -435,8 +345,8 @@ type stelaConnectClient struct {
 	grpc.ClientStream
 }
 
-func (x *stelaConnectClient) Recv() (*ServiceResponse, error) {
-	m := new(ServiceResponse)
+func (x *stelaConnectClient) Recv() (*ServiceMessage, error) {
+	m := new(ServiceMessage)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -479,7 +389,7 @@ func (c *stelaClient) Deregister(ctx context.Context, in *RegisterRequest, opts 
 	return out, nil
 }
 
-func (c *stelaClient) NotifyClients(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyResponse, error) {
+func (c *stelaClient) NotifyClients(ctx context.Context, in *ServiceMessage, opts ...grpc.CallOption) (*NotifyResponse, error) {
 	out := new(NotifyResponse)
 	err := grpc.Invoke(ctx, "/stela.Stela/NotifyClients", in, out, c.cc, opts...)
 	if err != nil {
@@ -497,8 +407,8 @@ func (c *stelaClient) Discover(ctx context.Context, in *DiscoverRequest, opts ..
 	return out, nil
 }
 
-func (c *stelaClient) DiscoverOne(ctx context.Context, in *DiscoverRequest, opts ...grpc.CallOption) (*ServiceResponse, error) {
-	out := new(ServiceResponse)
+func (c *stelaClient) DiscoverOne(ctx context.Context, in *DiscoverRequest, opts ...grpc.CallOption) (*ServiceMessage, error) {
+	out := new(ServiceMessage)
 	err := grpc.Invoke(ctx, "/stela.Stela/DiscoverOne", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -524,8 +434,8 @@ func (c *stelaClient) PeerDiscover(ctx context.Context, in *DiscoverRequest, opt
 	return out, nil
 }
 
-func (c *stelaClient) PeerDiscoverOne(ctx context.Context, in *DiscoverRequest, opts ...grpc.CallOption) (*ServiceResponse, error) {
-	out := new(ServiceResponse)
+func (c *stelaClient) PeerDiscoverOne(ctx context.Context, in *DiscoverRequest, opts ...grpc.CallOption) (*ServiceMessage, error) {
+	out := new(ServiceMessage)
 	err := grpc.Invoke(ctx, "/stela.Stela/PeerDiscoverOne", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -551,13 +461,13 @@ type StelaServer interface {
 	Unsubscribe(context.Context, *SubscribeRequest) (*SubscribeResponse, error)
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	Deregister(context.Context, *RegisterRequest) (*RegisterResponse, error)
-	NotifyClients(context.Context, *NotifyRequest) (*NotifyResponse, error)
+	NotifyClients(context.Context, *ServiceMessage) (*NotifyResponse, error)
 	Discover(context.Context, *DiscoverRequest) (*DiscoverResponse, error)
-	DiscoverOne(context.Context, *DiscoverRequest) (*ServiceResponse, error)
+	DiscoverOne(context.Context, *DiscoverRequest) (*ServiceMessage, error)
 	DiscoverAll(context.Context, *DiscoverAllRequest) (*DiscoverResponse, error)
 	// Peer related RPC is used to request all peer members
 	PeerDiscover(context.Context, *DiscoverRequest) (*DiscoverResponse, error)
-	PeerDiscoverOne(context.Context, *DiscoverRequest) (*ServiceResponse, error)
+	PeerDiscoverOne(context.Context, *DiscoverRequest) (*ServiceMessage, error)
 	PeerDiscoverAll(context.Context, *DiscoverAllRequest) (*DiscoverResponse, error)
 }
 
@@ -592,7 +502,7 @@ func _Stela_Connect_Handler(srv interface{}, stream grpc.ServerStream) error {
 }
 
 type Stela_ConnectServer interface {
-	Send(*ServiceResponse) error
+	Send(*ServiceMessage) error
 	grpc.ServerStream
 }
 
@@ -600,7 +510,7 @@ type stelaConnectServer struct {
 	grpc.ServerStream
 }
 
-func (x *stelaConnectServer) Send(m *ServiceResponse) error {
+func (x *stelaConnectServer) Send(m *ServiceMessage) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -677,7 +587,7 @@ func _Stela_Deregister_Handler(srv interface{}, ctx context.Context, dec func(in
 }
 
 func _Stela_NotifyClients_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NotifyRequest)
+	in := new(ServiceMessage)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -689,7 +599,7 @@ func _Stela_NotifyClients_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: "/stela.Stela/NotifyClients",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StelaServer).NotifyClients(ctx, req.(*NotifyRequest))
+		return srv.(StelaServer).NotifyClients(ctx, req.(*ServiceMessage))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -868,40 +778,38 @@ var _Stela_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("stela.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 546 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xcc, 0x55, 0x5d, 0x6f, 0xd3, 0x30,
-	0x14, 0x6d, 0xd6, 0xa6, 0x6b, 0x6f, 0xb6, 0x36, 0x33, 0xfb, 0x08, 0xe1, 0x65, 0x44, 0x42, 0xea,
-	0x0b, 0xd3, 0x54, 0x78, 0x41, 0xe2, 0x2b, 0x74, 0x02, 0xf1, 0x32, 0x50, 0x2a, 0x9e, 0xa7, 0x34,
-	0x31, 0x60, 0x29, 0x8b, 0x8b, 0xed, 0x4d, 0xda, 0xcf, 0x41, 0xbc, 0xf0, 0xbf, 0xf8, 0x23, 0x28,
-	0x8e, 0xed, 0xa4, 0x29, 0x99, 0xa6, 0xf5, 0x85, 0xb7, 0xf8, 0xd8, 0xf7, 0xdc, 0xe3, 0xe3, 0x7b,
-	0x5a, 0x70, 0xb8, 0xc0, 0x59, 0x7c, 0xb2, 0x64, 0x54, 0x50, 0x64, 0xcb, 0x45, 0xf0, 0x02, 0xdc,
-	0x30, 0x4d, 0x67, 0x19, 0xc1, 0xb9, 0x88, 0xf0, 0x8f, 0x2b, 0xcc, 0x05, 0x7a, 0x02, 0xa3, 0x44,
-	0x02, 0x17, 0x71, 0x9a, 0x32, 0xcc, 0xb9, 0x67, 0x1d, 0x5b, 0x93, 0x61, 0xb4, 0x5b, 0xa2, 0x61,
-	0x09, 0x06, 0x4f, 0x61, 0x34, 0xa3, 0x79, 0x8e, 0x13, 0x53, 0xf8, 0x08, 0x86, 0xaa, 0x90, 0xa4,
-	0xaa, 0x66, 0x50, 0x02, 0x1f, 0xd3, 0x20, 0x02, 0x77, 0x7e, 0xb5, 0xe0, 0x09, 0x23, 0x0b, 0x7c,
-	0x97, 0x02, 0xf4, 0x18, 0x76, 0x38, 0x66, 0xd7, 0x24, 0xc1, 0x17, 0x79, 0x7c, 0x89, 0xbd, 0x2d,
-	0xb9, 0xef, 0x28, 0xec, 0x3c, 0xbe, 0xc4, 0xc1, 0x6f, 0x0b, 0xc6, 0x11, 0xfe, 0x46, 0xb8, 0xc0,
-	0xec, 0x4e, 0x9c, 0x08, 0x7a, 0x35, 0x2e, 0xf9, 0x8d, 0x7c, 0x18, 0x7c, 0xa7, 0x5c, 0x48, 0xbc,
-	0x5b, 0x9e, 0xd7, 0x6b, 0xe4, 0xc1, 0xb6, 0xf6, 0xa0, 0x27, 0xb7, 0xf4, 0xb2, 0x60, 0x5a, 0x52,
-	0x26, 0x3c, 0xfb, 0xd8, 0x9a, 0xd8, 0x91, 0xfc, 0x2e, 0x98, 0x96, 0x8c, 0x50, 0x46, 0xc4, 0x8d,
-	0xd7, 0x97, 0xb8, 0x59, 0x07, 0x3f, 0x2d, 0xd8, 0x3d, 0xa7, 0x82, 0x7c, 0xbd, 0xd1, 0x42, 0xb5,
-	0x16, 0xab, 0x45, 0xcb, 0x56, 0xbb, 0x96, 0xee, 0xbf, 0xb5, 0xf4, 0x5a, 0xb4, 0xd8, 0xab, 0x5a,
-	0xd0, 0x21, 0xf4, 0xe3, 0x44, 0x10, 0x9a, 0x2b, 0x95, 0x6a, 0x15, 0x3c, 0x87, 0xf1, 0x19, 0xe1,
-	0x09, 0xbd, 0xae, 0xdc, 0x6c, 0x3e, 0x82, 0xb5, 0xfe, 0x08, 0xfb, 0x80, 0x74, 0x55, 0x98, 0x65,
-	0xaa, 0x30, 0x38, 0x85, 0xbd, 0xda, 0x60, 0xf1, 0x25, 0xcd, 0x39, 0xbe, 0x7d, 0x40, 0x7e, 0x59,
-	0x30, 0x9e, 0x97, 0xbc, 0xa6, 0xe0, 0xff, 0xf3, 0xe8, 0x01, 0xec, 0xd5, 0xc6, 0xb8, 0x94, 0x19,
-	0x20, 0x70, 0xab, 0x31, 0x54, 0x98, 0x0b, 0x23, 0xfd, 0xde, 0x0a, 0x79, 0x0f, 0x6e, 0x65, 0xaf,
-	0xba, 0xe0, 0x14, 0x06, 0xca, 0xcb, 0x22, 0x65, 0xdd, 0x89, 0x33, 0x3d, 0x3c, 0x29, 0x63, 0xda,
-	0xb0, 0x22, 0x32, 0xe7, 0xa6, 0x7f, 0xfa, 0x60, 0xcf, 0x8b, 0x33, 0xe8, 0x2d, 0x0c, 0x8d, 0xc9,
-	0xe8, 0x48, 0x15, 0x36, 0xf3, 0xec, 0x7b, 0xeb, 0x1b, 0x4a, 0x51, 0x07, 0xbd, 0x84, 0x6d, 0x15,
-	0x62, 0x74, 0xa0, 0x8e, 0xad, 0x86, 0xda, 0x6f, 0xd1, 0x13, 0x74, 0x4e, 0xad, 0xa2, 0xbf, 0x31,
-	0xc3, 0xf4, 0x6f, 0xa6, 0xdc, 0xf4, 0x5f, 0xf7, 0xad, 0x83, 0xde, 0x81, 0xf3, 0x25, 0xe7, 0x9b,
-	0x71, 0xbc, 0x82, 0x81, 0x76, 0x1f, 0x69, 0xb5, 0x8d, 0x5f, 0x05, 0xff, 0x68, 0x0d, 0x37, 0xe5,
-	0x6f, 0x00, 0xce, 0x30, 0xdb, 0x80, 0xe0, 0xb5, 0x4e, 0x76, 0xe9, 0x2e, 0x47, 0xfb, 0xea, 0xec,
-	0x4a, 0xde, 0xfd, 0x83, 0x06, 0x5a, 0xd7, 0xaf, 0xe7, 0xc2, 0xb4, 0x6f, 0xe4, 0xd0, 0xb4, 0x6f,
-	0x0e, 0x90, 0xd4, 0xef, 0x68, 0xf4, 0x53, 0x8e, 0x5b, 0x19, 0x5a, 0xdf, 0x11, 0xcd, 0x2a, 0x82,
-	0x30, 0xcb, 0xd0, 0xc3, 0x06, 0x41, 0x15, 0xea, 0xdb, 0x54, 0x84, 0xb0, 0xf3, 0x19, 0x63, 0xb6,
-	0xc9, 0x45, 0x66, 0x30, 0xae, 0x53, 0xdc, 0xef, 0x32, 0x1f, 0x56, 0x49, 0xee, 0x7d, 0xa1, 0x45,
-	0x5f, 0xfe, 0x4f, 0x3e, 0xfb, 0x1b, 0x00, 0x00, 0xff, 0xff, 0xaa, 0xbe, 0x31, 0x10, 0x36, 0x07,
-	0x00, 0x00,
+	// 526 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xa4, 0x55, 0x4d, 0x6f, 0xd3, 0x40,
+	0x10, 0x8d, 0x69, 0xf3, 0x35, 0x69, 0x93, 0x74, 0x80, 0xd6, 0x84, 0x4b, 0x59, 0x09, 0xa9, 0x17,
+	0x4a, 0x29, 0x5c, 0x10, 0xe2, 0x23, 0x4d, 0x11, 0xe2, 0x40, 0x41, 0x8e, 0x38, 0x47, 0x8e, 0x3d,
+	0x94, 0x95, 0x5c, 0x6f, 0xd8, 0xdd, 0x56, 0xea, 0xdf, 0xe1, 0x9f, 0xf1, 0x4f, 0x90, 0xd7, 0xeb,
+	0x75, 0xe2, 0x34, 0x55, 0xd5, 0xdc, 0xbc, 0x6f, 0xf7, 0xcd, 0xbc, 0x79, 0xf3, 0xa2, 0x40, 0x47,
+	0x69, 0x4a, 0xc2, 0xc3, 0x99, 0x14, 0x5a, 0x60, 0xdd, 0x1c, 0xd8, 0x5f, 0x0f, 0xba, 0x63, 0x92,
+	0x57, 0x3c, 0xa2, 0x6f, 0xa4, 0x54, 0x78, 0x4e, 0x88, 0xb0, 0x99, 0x86, 0x17, 0xe4, 0x7b, 0xfb,
+	0xde, 0x41, 0x3b, 0x30, 0xdf, 0x38, 0x80, 0xd6, 0x6f, 0xa1, 0xb4, 0xc1, 0x1f, 0x18, 0xdc, 0x9d,
+	0xd1, 0x87, 0x66, 0x18, 0xc7, 0x92, 0x94, 0xf2, 0x37, 0xcc, 0x55, 0x71, 0xcc, 0x2a, 0xcd, 0x84,
+	0xd4, 0xfe, 0xe6, 0xbe, 0x77, 0x50, 0x0f, 0xcc, 0x77, 0x56, 0x69, 0x26, 0xb9, 0x90, 0x5c, 0x5f,
+	0xfb, 0x75, 0x83, 0xbb, 0x33, 0xee, 0x42, 0x23, 0x8c, 0x34, 0x17, 0xa9, 0xdf, 0x30, 0x37, 0xf6,
+	0xc4, 0xde, 0x42, 0x7f, 0x18, 0xc7, 0xa3, 0x84, 0x53, 0xaa, 0x03, 0xfa, 0x73, 0x49, 0x4a, 0xe3,
+	0x73, 0xe8, 0x46, 0x06, 0x98, 0x14, 0xcd, 0x73, 0xbd, 0xdb, 0x39, 0x3a, 0xcc, 0x41, 0xf6, 0x02,
+	0xba, 0x23, 0x91, 0xa6, 0x14, 0x39, 0xe2, 0x53, 0x68, 0x5b, 0x22, 0x8f, 0x2d, 0xa7, 0x95, 0x03,
+	0x5f, 0x63, 0x16, 0x40, 0x7f, 0x7c, 0x39, 0x55, 0x91, 0xe4, 0x53, 0xba, 0x0b, 0x01, 0x9f, 0xc1,
+	0x96, 0xca, 0xed, 0x9b, 0xcc, 0x99, 0xd3, 0xb1, 0xd8, 0x59, 0x78, 0x41, 0x6c, 0x02, 0xbd, 0x80,
+	0xce, 0xb9, 0xd2, 0x24, 0xef, 0x54, 0xf2, 0x25, 0x34, 0x2d, 0xdd, 0x54, 0xeb, 0x1c, 0x3f, 0x3e,
+	0xcc, 0x17, 0xb7, 0xb8, 0xa7, 0xa0, 0x78, 0xc5, 0xde, 0x40, 0xef, 0x94, 0xab, 0x48, 0x5c, 0x95,
+	0x0d, 0xaa, 0xb2, 0xbc, 0x65, 0x59, 0x8f, 0x00, 0x0b, 0xd6, 0x30, 0x49, 0x2c, 0x91, 0x1d, 0xc1,
+	0xce, 0x9c, 0xd5, 0x6a, 0x26, 0x52, 0x45, 0xb7, 0x5b, 0xf6, 0x10, 0x76, 0xe6, 0x2c, 0xcb, 0x19,
+	0x0c, 0xa1, 0x5f, 0xce, 0x6c, 0xb1, 0x3e, 0x74, 0xcf, 0x84, 0xe6, 0xbf, 0xae, 0x1d, 0xf2, 0x19,
+	0xfa, 0xa5, 0x70, 0xdb, 0xeb, 0x15, 0xb4, 0xac, 0xca, 0x6c, 0xa3, 0x1b, 0xab, 0xc7, 0x77, 0xcf,
+	0x8e, 0xff, 0x35, 0xa0, 0x3e, 0xce, 0x9e, 0xe0, 0x27, 0x68, 0x3b, 0xf5, 0xb8, 0x67, 0x79, 0xd5,
+	0xe8, 0x0c, 0xfc, 0xe5, 0x0b, 0x2b, 0xa8, 0x86, 0xef, 0xa0, 0x69, 0xf3, 0x82, 0x45, 0xdf, 0xc5,
+	0xfc, 0x0c, 0x6e, 0x96, 0xc3, 0x6a, 0x47, 0x5e, 0xd6, 0xde, 0x59, 0xe1, 0xda, 0x57, 0xf3, 0xe4,
+	0xda, 0x2f, 0xbb, 0x56, 0xc3, 0x13, 0xe8, 0xfc, 0x4c, 0xd5, 0x7a, 0x35, 0xde, 0x43, 0xab, 0xf0,
+	0x1e, 0x77, 0xed, 0xbb, 0x4a, 0x00, 0x07, 0x7b, 0x4b, 0xb8, 0xa3, 0x7f, 0x04, 0x38, 0x25, 0xb9,
+	0x56, 0x81, 0xed, 0x7c, 0xcf, 0xb9, 0xb9, 0x0a, 0x6f, 0x76, 0xcc, 0x19, 0x59, 0x09, 0x85, 0x19,
+	0xa0, 0x88, 0x85, 0xeb, 0x5f, 0x09, 0xb8, 0xeb, 0x5f, 0xcd, 0x0f, 0xab, 0xe1, 0x07, 0xe8, 0x14,
+	0xe8, 0xf7, 0x94, 0x56, 0x56, 0x58, 0xb5, 0x47, 0x1c, 0x95, 0xfc, 0x61, 0x92, 0xe0, 0x93, 0x0a,
+	0xbf, 0xfc, 0xb1, 0xdc, 0x26, 0x62, 0x08, 0x5b, 0x3f, 0x88, 0xe4, 0x3a, 0x73, 0x9c, 0x40, 0x6f,
+	0xbe, 0xc4, 0xbd, 0x66, 0xf9, 0xb2, 0x58, 0xe3, 0xde, 0xf3, 0x4c, 0x1b, 0xe6, 0x5f, 0xe3, 0xf5,
+	0xff, 0x00, 0x00, 0x00, 0xff, 0xff, 0x52, 0xdb, 0x86, 0x5d, 0x44, 0x06, 0x00, 0x00,
 }

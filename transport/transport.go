@@ -20,9 +20,10 @@ import (
 
 // Server implements the stela.proto service
 type Server struct {
-	mu    sync.Mutex
-	Store store.Store
-	peers []*node.Node
+	mu      sync.Mutex
+	Store   store.Store
+	peers   []*node.Node
+	Timeout time.Duration
 }
 
 // AddClient adds a client to the store and returns it's id
@@ -178,11 +179,13 @@ func (s *Server) peerNotify(service *stela.Service) {
 		go func(p *node.Node) {
 			defer wg.Done()
 			// Create context with timeout
-			ctx, cancelFunc := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			ctx, cancelFunc := context.WithTimeout(context.Background(), s.Timeout)
 			defer cancelFunc()
 			waitCh := make(chan struct{})
 
 			go func() {
+				defer close(waitCh)
+
 				address := p.Values["Address"]
 				address, err := convertToLocalIP(address)
 				if err != nil {
@@ -210,8 +213,6 @@ func (s *Server) peerNotify(service *stela.Service) {
 					fmt.Println("peerNotify err,", err)
 					return
 				}
-
-				close(waitCh)
 			}()
 
 			// Block until the context times out or the client is notified
@@ -308,34 +309,50 @@ func (s *Server) PeerDiscover(ctx context.Context, req *stela.DiscoverRequest) (
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 
-	// Create new contextWithTimeout from ctx
-
 	var results []*stela.ServiceResponse
 	var mu sync.Mutex
 	for _, p := range s.peers {
 		go func(p *node.Node) {
 			defer wg.Done()
-			address := p.Values["Address"]
-			address, err := convertToLocalIP(address)
-			if err != nil {
-				return
-			}
 
-			// Dial the server
-			conn, err := grpc.Dial(address, gRPCOptions()...)
-			if err != nil {
-				return
-			}
-			defer conn.Close()
-			c := stela.NewStelaClient(conn)
-			resp, err := c.Discover(ctx, req)
-			if err != nil {
-				return
-			}
+			// Create context with timeout
+			ctx, cancelFunc := context.WithTimeout(ctx, s.Timeout)
+			defer cancelFunc()
+			waitCh := make(chan struct{})
 
-			mu.Lock()
-			defer mu.Unlock()
-			results = append(results, resp.Services...)
+			go func() {
+				defer close(waitCh)
+
+				address := p.Values["Address"]
+				address, err := convertToLocalIP(address)
+				if err != nil {
+					return
+				}
+
+				// Dial the server
+				conn, err := grpc.Dial(address, gRPCOptions()...)
+				if err != nil {
+					return
+				}
+				defer conn.Close()
+				c := stela.NewStelaClient(conn)
+				resp, err := c.Discover(ctx, req)
+				if err != nil {
+					return
+				}
+
+				mu.Lock()
+				defer mu.Unlock()
+				results = append(results, resp.Services...)
+			}()
+
+			// Block until the context times out or the client is notified
+			select {
+			case <-waitCh:
+				return
+			case <-ctx.Done():
+				return
+			}
 		}(p)
 	}
 	wg.Wait()
@@ -354,31 +371,49 @@ func (s *Server) PeerDiscoverOne(ctx context.Context, req *stela.DiscoverRequest
 	for _, p := range s.peers {
 		go func(p *node.Node) {
 			defer wg.Done()
-			address := p.Values["Address"]
-			address, err := convertToLocalIP(address)
-			if err != nil {
-				return
-			}
 
-			// Dial the server
-			conn, err := grpc.Dial(address, gRPCOptions()...)
-			if err != nil {
-				return
-			}
-			defer conn.Close()
-			c := stela.NewStelaClient(conn)
-			resp, err := c.DiscoverOne(ctx, req)
-			if err != nil {
-				return
-			}
+			// Create context with timeout
+			ctx, cancelFunc := context.WithTimeout(ctx, s.Timeout)
+			defer cancelFunc()
+			waitCh := make(chan struct{})
 
-			mu.Lock()
-			defer mu.Unlock()
-			results = append(results, resp)
+			go func() {
+				defer close(waitCh)
+				address := p.Values["Address"]
+				address, err := convertToLocalIP(address)
+				if err != nil {
+					return
+				}
+
+				// Dial the server
+				conn, err := grpc.Dial(address, gRPCOptions()...)
+				if err != nil {
+					return
+				}
+				defer conn.Close()
+				c := stela.NewStelaClient(conn)
+				resp, err := c.DiscoverOne(ctx, req)
+				if err != nil {
+					return
+				}
+
+				mu.Lock()
+				defer mu.Unlock()
+				results = append(results, resp)
+			}()
+
+			// Block until the context times out or the client is notified
+			select {
+			case <-waitCh:
+				return
+			case <-ctx.Done():
+				return
+			}
 		}(p)
 	}
 	wg.Wait()
 
+	// Give back a random result
 	var index int
 	if len(results) > 1 {
 		index = 1
@@ -399,27 +434,44 @@ func (s *Server) PeerDiscoverAll(ctx context.Context, req *stela.DiscoverAllRequ
 	for _, p := range s.peers {
 		go func(p *node.Node) {
 			defer wg.Done()
-			address := p.Values["Address"]
-			address, err := convertToLocalIP(address)
-			if err != nil {
-				return
-			}
 
-			// Dial the server
-			conn, err := grpc.Dial(address, gRPCOptions()...)
-			if err != nil {
-				return
-			}
-			defer conn.Close()
-			c := stela.NewStelaClient(conn)
-			resp, err := c.DiscoverAll(ctx, req)
-			if err != nil {
-				return
-			}
+			// Create context with timeout
+			ctx, cancelFunc := context.WithTimeout(ctx, s.Timeout)
+			defer cancelFunc()
+			waitCh := make(chan struct{})
 
-			mu.Lock()
-			defer mu.Unlock()
-			results = append(results, resp.Services...)
+			go func() {
+				defer close(waitCh)
+				address := p.Values["Address"]
+				address, err := convertToLocalIP(address)
+				if err != nil {
+					return
+				}
+
+				// Dial the server
+				conn, err := grpc.Dial(address, gRPCOptions()...)
+				if err != nil {
+					return
+				}
+				defer conn.Close()
+				c := stela.NewStelaClient(conn)
+				resp, err := c.DiscoverAll(ctx, req)
+				if err != nil {
+					return
+				}
+
+				mu.Lock()
+				defer mu.Unlock()
+				results = append(results, resp.Services...)
+			}()
+
+			// Block until the context times out or the client is notified
+			select {
+			case <-waitCh:
+				return
+			case <-ctx.Done():
+				return
+			}
 		}(p)
 	}
 	wg.Wait()

@@ -65,7 +65,7 @@ func main() {
 
 	// Create store and transport
 	m := &mapstore.MapStore{}
-	t := &transport.Server{Store: m}
+	t := &transport.Server{Store: m, Timeout: 1 * time.Second}
 
 	// Setup disco and listen for other stela instances
 	multicastAddr := fmt.Sprintf("%s:%d", stela.DefaultMulticastAddress, *multicastPortPtr)

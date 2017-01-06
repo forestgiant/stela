@@ -145,7 +145,7 @@ func main() {
 	// Select will block until a signal comes in
 	select {
 	case <-ctx.Done():
-		grpcServer.GracefulStop()
+		grpcServer.Stop()
 		fmt.Println("Closing stela")
 		return
 	}

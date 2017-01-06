@@ -99,9 +99,8 @@ func (m *MapStore) Deregister(s *stela.Service) {
 }
 
 // NotifyClients let's all locally subscribed clients, on this stela instance, know about service subscription changes
-func (m *MapStore) NotifyClients(s *stela.Service, action int32) {
+func (m *MapStore) NotifyClients(s *stela.Service) {
 	// Let subscribers know about service change
-	s.Action = action
 	for _, c := range m.subscribers[s.Name] {
 		c.Notify(s)
 	}

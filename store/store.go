@@ -12,7 +12,7 @@ type Store interface {
 	Subscribe(serviceName string, c *stela.Client) error
 	Unsubscribe(serviceName string, c *stela.Client) error
 	Client(id string) (*stela.Client, error)
-	NotifyClients(*stela.Service, int32)
+	NotifyClients(*stela.Service)
 	ServicesByClient(c *stela.Client) []*stela.Service
 	// Clients(address string) ([]*stela.Client, error) // Returns all clients by a given ip address
 	AddClient(c *stela.Client) error

@@ -74,6 +74,7 @@ func (s *Server) Connect(req *stela.ConnectRequest, stream stela.Stela_ConnectSe
 				s.Store.Deregister(rs)
 
 				// Notify all peers about the deregistered service
+				rs.Action = stela.DeregisterAction
 				s.peerNotify(rs)
 			}
 
@@ -137,7 +138,8 @@ func (s *Server) Register(ctx context.Context, req *stela.RegisterRequest) (*ste
 		return nil, err
 	}
 
-	// Notify all subscribers
+	// Notify all peers about the new service
+	service.Action = stela.RegisterAction
 	s.peerNotify(service)
 
 	return &stela.RegisterResponse{}, nil
@@ -165,7 +167,8 @@ func (s *Server) Deregister(ctx context.Context, req *stela.RegisterRequest) (*s
 	// Register service to store
 	s.Store.Deregister(service)
 
-	// Notify all subscribers
+	// Notify all peers that a service was deregistered
+	service.Action = stela.DeregisterAction
 	s.peerNotify(service)
 
 	return &stela.RegisterResponse{}, nil
@@ -239,7 +242,7 @@ func (s *Server) NotifyClients(ctx context.Context, req *stela.NotifyRequest) (*
 		Action:   req.Action,
 	}
 
-	s.Store.NotifyClients(service, service.Action)
+	s.Store.NotifyClients(service)
 
 	return &stela.NotifyResponse{}, nil
 }

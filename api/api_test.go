@@ -13,6 +13,8 @@ import (
 	"gitlab.fg/go/stela"
 )
 
+const timeOut = 500 * time.Millisecond
+
 // func TestMain(m *testing.M) {
 // 	kill, err := startStelaInstance(stela.DefaultStelaPort, stela.DefaultMulticastPort)
 // 	if err != nil {
@@ -32,7 +34,8 @@ func TestRegisterAndDiscover(t *testing.T) {
 	// 	t.Fatal(err)
 	// }
 	// defer kill()
-	ctx := context.Background()
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeOut)
+	defer cancelFunc()
 
 	serviceName := "apitest.services.fg"
 	c, err := NewClient(ctx, stela.DefaultStelaAddress, "../testdata/ca.pem")
@@ -75,7 +78,9 @@ func TestRegisterAndDiscover(t *testing.T) {
 		},
 	}
 	for _, s := range c2Services {
-		if err := c2.RegisterService(s); err != nil {
+		registerCtx, cancelRegister := context.WithTimeout(context.Background(), timeOut)
+		defer cancelRegister()
+		if err := c2.RegisterService(registerCtx, s); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -117,7 +122,9 @@ func TestRegisterAndDiscover(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		if err := c.RegisterService(test.service); test.shouldFail != (err != nil) {
+		registerCtx, cancelRegister := context.WithTimeout(context.Background(), timeOut)
+		defer cancelRegister()
+		if err := c.RegisterService(registerCtx, test.service); test.shouldFail != (err != nil) {
 			t.Fatal(i, test, err)
 		}
 
@@ -128,7 +135,9 @@ func TestRegisterAndDiscover(t *testing.T) {
 	}
 
 	// Now see if we can discover them
-	services, err := c.Discover(serviceName)
+	discoverCtx, cancelDiscover := context.WithTimeout(context.Background(), timeOut)
+	defer cancelDiscover()
+	services, err := c.Discover(discoverCtx, serviceName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +150,9 @@ func TestRegisterAndDiscover(t *testing.T) {
 	equalServices(t, services, expectedServices)
 
 	// DiscoverAll should return expected plus 1
-	da, err := c.DiscoverAll()
+	discoverAllCtx, cancelDiscoverAll := context.WithTimeout(context.Background(), timeOut)
+	defer cancelDiscoverAll()
+	da, err := c.DiscoverAll(discoverAllCtx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +163,9 @@ func TestRegisterAndDiscover(t *testing.T) {
 	}
 
 	// DiscoverOne with c2
-	s, err := c2.DiscoverOne(serviceName)
+	discoverOneCtx, cancelDiscoverOne := context.WithTimeout(context.Background(), timeOut)
+	defer cancelDiscoverOne()
+	s, err := c2.DiscoverOne(discoverOneCtx, serviceName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,17 +174,22 @@ func TestRegisterAndDiscover(t *testing.T) {
 	}
 
 	// Register another stela with c
-	if err := c.RegisterService(&stela.Service{
-		Name:    stela.ServiceName,
-		Target:  "jlu.macbook",
-		Address: "127.0.0.1",
-		Port:    10002,
-	}); err != nil {
+	registerCtx, cancelRegister := context.WithTimeout(context.Background(), timeOut)
+	defer cancelRegister()
+	if err := c.RegisterService(registerCtx,
+		&stela.Service{
+			Name:    stela.ServiceName,
+			Target:  "jlu.macbook",
+			Address: "127.0.0.1",
+			Port:    10002,
+		}); err != nil {
 		t.Fatal(err)
 	}
 
 	// Discover all stela instances
-	stelas, err := c2.Discover(stela.ServiceName)
+	discoverCtx, cancelDiscover = context.WithTimeout(context.Background(), timeOut)
+	defer cancelDiscover()
+	stelas, err := c2.Discover(discoverCtx, stela.ServiceName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +200,7 @@ func TestRegisterAndDiscover(t *testing.T) {
 
 func TestConnectSubscribe(t *testing.T) {
 	serviceName := "testSubscribe.services.fg"
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Millisecond*100)
+	ctx, cancel := context.WithTimeout(context.Background(), timeOut)
 
 	// Connect to both instances
 	c, err := NewClient(ctx, stela.DefaultStelaAddress, "../testdata/ca.pem")
@@ -255,16 +273,20 @@ func TestConnectSubscribe(t *testing.T) {
 	// 	t.Fatal(err)
 	// }
 
-	if err := c2.Subscribe(serviceName, callback); err != nil {
+	subscribeCtx, cancelSubscribe := context.WithCancel(context.Background())
+	defer cancelSubscribe()
+	if err := c2.Subscribe(subscribeCtx, serviceName, callback); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c3.Subscribe(serviceName, callback2); err != nil {
+	if err := c3.Subscribe(subscribeCtx, serviceName, callback2); err != nil {
 		t.Fatal(err)
 	}
 
 	for _, s := range testServices {
-		if err := c.RegisterService(s); err != nil {
+		registerCtx, cancelRegister := context.WithTimeout(context.Background(), timeOut)
+		defer cancelRegister()
+		if err := c.RegisterService(registerCtx, s); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -278,7 +300,10 @@ func TestConnectSubscribe(t *testing.T) {
 			t.Fatal("TestConnectSubscribe timed out: ", ctx.Err())
 		}
 	}
-	if err := c2.Unsubscribe(serviceName); err != nil {
+
+	unsubscribeCtx, cancelUnsubscribe := context.WithTimeout(context.Background(), timeOut)
+	defer cancelUnsubscribe()
+	if err := c2.Unsubscribe(unsubscribeCtx, serviceName); err != nil {
 		t.Fatal(err)
 	}
 

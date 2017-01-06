@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"golang.org/x/net/context"
 
@@ -11,7 +12,9 @@ import (
 
 func ExampleStelaApi() {
 	// Create stela client
-	client, err := NewClient(context.Background(), stela.DefaultStelaAddress, "../testdata/ca.pem") // The default is localhost
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancelFunc()
+	client, err := NewClient(ctx, stela.DefaultStelaAddress, "../testdata/ca.pem") // The default is localhost
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -26,7 +29,9 @@ func ExampleStelaApi() {
 	}
 
 	// Subscribe to that serviceName to be notified if anyone else registers a service
-	client.Subscribe(serviceName, func(s *stela.Service) {
+	subscribeCtx, cancelSubscribe := context.WithCancel(context.Background())
+	defer cancelSubscribe()
+	client.Subscribe(subscribeCtx, serviceName, func(s *stela.Service) {
 		switch s.Action {
 		case stela.RegisterAction:
 			fmt.Println("a new test.service.fg was found!", s)
@@ -36,13 +41,17 @@ func ExampleStelaApi() {
 	})
 
 	// Now register with stela
-	if err := client.RegisterService(service); err != nil {
+	registerCtx, cancelRegister := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancelRegister()
+	if err := client.RegisterService(registerCtx, service); err != nil {
 		log.Fatal(err)
 	}
 
 	// Discover all endpoints registered with that name
 	// Typically done from another service
-	services, err := client.Discover(serviceName)
+	discoverCtx, cancelDiscover := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancelDiscover()
+	services, err := client.Discover(discoverCtx, serviceName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,7 +59,9 @@ func ExampleStelaApi() {
 	fmt.Println("Found services:", services)
 
 	// When finished deregister
-	err = client.DeregisterService(service)
+	deregisterCtx, cancelDeregister := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancelDeregister()
+	err = client.DeregisterService(deregisterCtx, service)
 	if err != nil {
 		log.Fatal(err)
 	}

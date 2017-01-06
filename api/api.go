@@ -15,8 +15,8 @@ import (
 type Client struct {
 	stela.Client
 
-	mu        sync.RWMutex
-	ctx       context.Context
+	mu sync.RWMutex
+	// ctx       context.Context
 	rpc       stela.StelaClient
 	conn      *grpc.ClientConn
 	Hostname  string
@@ -29,7 +29,7 @@ func NewClient(ctx context.Context, stelaAddress string, caFile string) (*Client
 	if err != nil {
 		return nil, err
 	}
-	c.ctx = ctx
+	// c.ctx = ctx
 	c.Hostname = host
 	c.Address = netutil.LocalIPv4().String()
 
@@ -48,7 +48,7 @@ func NewClient(ctx context.Context, stelaAddress string, caFile string) (*Client
 	c.rpc = stela.NewStelaClient(c.conn)
 
 	// Add the Client
-	resp, err := c.rpc.AddClient(c.ctx, &stela.AddClientRequest{ClientAddress: c.Address})
+	resp, err := c.rpc.AddClient(ctx, &stela.AddClientRequest{ClientAddress: c.Address})
 	if err != nil {
 		return nil, err
 	}
@@ -69,13 +69,15 @@ func (c *Client) init() {
 }
 
 func (c *Client) connect() error {
-	stream, err := c.rpc.Connect(c.ctx, &stela.ConnectRequest{ClientId: c.ID})
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	stream, err := c.rpc.Connect(ctx, &stela.ConnectRequest{ClientId: c.ID})
 	if err != nil {
 		return err
 	}
 
 	go func() {
 		defer c.conn.Close()
+		defer cancelFunc()
 		for {
 			rs, err := stream.Recv()
 			if err == io.EOF {
@@ -94,6 +96,7 @@ func (c *Client) connect() error {
 					Address:  rs.Address,
 					Port:     rs.Port,
 					Priority: rs.Priority,
+					Action:   rs.Action,
 				})
 				c.mu.RUnlock()
 			}
@@ -103,8 +106,8 @@ func (c *Client) connect() error {
 	return nil
 }
 
-func (c *Client) Subscribe(serviceName string, callback func(s *stela.Service)) error {
-	_, err := c.rpc.Subscribe(c.ctx,
+func (c *Client) Subscribe(ctx context.Context, serviceName string, callback func(s *stela.Service)) error {
+	_, err := c.rpc.Subscribe(ctx,
 		&stela.SubscribeRequest{
 			ClientId:    c.ID,
 			ServiceName: serviceName,
@@ -123,12 +126,12 @@ func (c *Client) Subscribe(serviceName string, callback func(s *stela.Service)) 
 	return nil
 }
 
-func (c *Client) Unsubscribe(serviceName string) error {
+func (c *Client) Unsubscribe(ctx context.Context, serviceName string) error {
 	if c.callbacks == nil {
 		return errors.New("Client hasn't subscribed")
 	}
 
-	_, err := c.rpc.Unsubscribe(c.ctx,
+	_, err := c.rpc.Unsubscribe(ctx,
 		&stela.SubscribeRequest{
 			ClientId:    c.ID,
 			ServiceName: serviceName,
@@ -145,10 +148,10 @@ func (c *Client) Unsubscribe(serviceName string) error {
 	return nil
 }
 
-func (c *Client) RegisterService(s *stela.Service) error {
+func (c *Client) RegisterService(ctx context.Context, s *stela.Service) error {
 	s.Target = c.Hostname
 	s.Address = c.Address
-	_, err := c.rpc.Register(c.ctx,
+	_, err := c.rpc.Register(ctx,
 		&stela.RegisterRequest{
 			ClientId: c.ID,
 			Name:     s.Name,
@@ -164,10 +167,10 @@ func (c *Client) RegisterService(s *stela.Service) error {
 	return nil
 }
 
-func (c *Client) DeregisterService(s *stela.Service) error {
+func (c *Client) DeregisterService(ctx context.Context, s *stela.Service) error {
 	s.Address = c.Address
 	s.Target = c.Hostname
-	_, err := c.rpc.Deregister(c.ctx,
+	_, err := c.rpc.Deregister(ctx,
 		&stela.RegisterRequest{
 			ClientId: c.ID,
 			Name:     s.Name,
@@ -183,8 +186,8 @@ func (c *Client) DeregisterService(s *stela.Service) error {
 	return nil
 }
 
-func (c *Client) Discover(serviceName string) ([]*stela.Service, error) {
-	resp, err := c.rpc.PeerDiscover(c.ctx, &stela.DiscoverRequest{ServiceName: serviceName})
+func (c *Client) Discover(ctx context.Context, serviceName string) ([]*stela.Service, error) {
+	resp, err := c.rpc.PeerDiscover(ctx, &stela.DiscoverRequest{ServiceName: serviceName})
 	if err != nil {
 		return nil, err
 	}
@@ -205,8 +208,8 @@ func (c *Client) Discover(serviceName string) ([]*stela.Service, error) {
 	return services, nil
 }
 
-func (c *Client) DiscoverOne(serviceName string) (*stela.Service, error) {
-	resp, err := c.rpc.PeerDiscoverOne(c.ctx, &stela.DiscoverRequest{ServiceName: serviceName})
+func (c *Client) DiscoverOne(ctx context.Context, serviceName string) (*stela.Service, error) {
+	resp, err := c.rpc.PeerDiscoverOne(ctx, &stela.DiscoverRequest{ServiceName: serviceName})
 	if err != nil {
 		return nil, err
 	}
@@ -220,8 +223,8 @@ func (c *Client) DiscoverOne(serviceName string) (*stela.Service, error) {
 		Priority: resp.Priority}, nil
 }
 
-func (c *Client) DiscoverAll() ([]*stela.Service, error) {
-	resp, err := c.rpc.PeerDiscoverAll(c.ctx, &stela.DiscoverAllRequest{})
+func (c *Client) DiscoverAll(ctx context.Context) ([]*stela.Service, error) {
+	resp, err := c.rpc.PeerDiscoverAll(ctx, &stela.DiscoverAllRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -243,5 +246,6 @@ func (c *Client) DiscoverAll() ([]*stela.Service, error) {
 }
 
 func (c *Client) Close() {
+
 	c.conn.Close()
 }

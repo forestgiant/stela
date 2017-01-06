@@ -179,7 +179,9 @@ func discoverStelas() ([]*stela.Service, error) {
 	}
 	defer c.Close()
 
-	stelas, err := c.Discover(stela.ServiceName)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancelFunc()
+	stelas, err := c.Discover(ctx, stela.ServiceName)
 	if err != nil {
 		return nil, err
 	}

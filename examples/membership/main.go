@@ -7,6 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"time"
+
 	fglog "github.com/forestgiant/log"
 	"github.com/forestgiant/portutil"
 	"gitlab.fg/go/stela"
@@ -35,7 +37,9 @@ func main() {
 	serviceName := "members.test.fg"
 
 	// Subscribe to that serviceName to be notified if anyone else registers a service
-	stelaClient.Subscribe(serviceName, func(s *stela.Service) {
+	subscribeCtx, cancelSubscribe := context.WithCancel(context.Background())
+	defer cancelSubscribe()
+	stelaClient.Subscribe(subscribeCtx, serviceName, func(s *stela.Service) {
 		switch s.Action {
 		case stela.RegisterAction:
 			fmt.Printf("New member registered: %s \n", fmt.Sprintf("%s:%d", s.Address, s.Port))
@@ -44,7 +48,9 @@ func main() {
 		}
 
 		// Print total members
-		services, err := stelaClient.Discover(serviceName)
+		discoverCtx, cancelDiscover := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancelDiscover()
+		services, err := stelaClient.Discover(discoverCtx, serviceName)
 		if err != nil {
 			logger.Error("failed to discover with stela:", "error", err.Error())
 		}
@@ -57,7 +63,10 @@ func main() {
 		Name: serviceName,
 		Port: int32(port),
 	}
-	if err := stelaClient.RegisterService(memberService); err != nil {
+
+	registerCtx, cancelRegister := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancelRegister()
+	if err := stelaClient.RegisterService(registerCtx, memberService); err != nil {
 		logger.Error("failed to register with stela:", "error", err.Error())
 		os.Exit(1)
 	}

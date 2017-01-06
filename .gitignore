@@ -4,4 +4,4 @@ logs
 .DS_Store
 *.db
 *.out
-peers.json
+examples/membership/membership

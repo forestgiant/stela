@@ -97,6 +97,7 @@ func (c *Client) connect() error {
 					Port:     rs.Port,
 					Priority: rs.Priority,
 					Action:   rs.Action,
+					Value:    stela.DecodeValue(rs.Value),
 				})
 				c.mu.RUnlock()
 			}
@@ -160,6 +161,7 @@ func (c *Client) RegisterService(ctx context.Context, s *stela.Service) error {
 				Address:  s.Address,
 				Port:     s.Port,
 				Priority: s.Priority,
+				Value:    stela.EncodeValue(s.Value),
 			},
 		})
 	if err != nil {

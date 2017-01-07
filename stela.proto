@@ -27,6 +27,7 @@ message ServiceMessage {
     int32 port = 4;
     int32 priority = 5;
     int32 action = 6;
+    bytes value = 7;
 }
 
 // Request

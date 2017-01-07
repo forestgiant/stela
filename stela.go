@@ -1,6 +1,8 @@
 package stela
 
 import (
+	"bytes"
+	"encoding/gob"
 	"net"
 	"sync"
 	"time"
@@ -34,8 +36,7 @@ const (
 	DeregisterAction = iota
 )
 
-// Service used in request/response and
-// storing RR in boltdb
+// Service used in request/response
 type Service struct {
 	Name         string
 	Target       string
@@ -45,10 +46,27 @@ type Service struct {
 	Timeout      int32 // The length of time, in milliseconds, before a service is deregistered
 	Action       int32
 	Client       *Client // Store reference to the client that registered the service
+	Value        interface{}
 	registerCh   chan struct{}
 	deregisterCh chan struct{}
 	stopped      bool
 	mu           *sync.Mutex // protects registerCh, deregisterCh, stopped
+}
+
+// init service chans
+func (s *Service) init() {
+	if s.mu == nil {
+		s.mu = &sync.Mutex{}
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.registerCh == nil {
+		s.registerCh = make(chan struct{})
+	}
+	if s.deregisterCh == nil {
+		s.deregisterCh = make(chan struct{})
+	}
 }
 
 // Equal tests if a Service is the same
@@ -115,22 +133,6 @@ func (s *Service) NewA(ip net.IP) dns.RR {
 	A.A = ip
 
 	return A
-}
-
-// init service chans
-func (s *Service) init() {
-	if s.mu == nil {
-		s.mu = &sync.Mutex{}
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.registerCh == nil {
-		s.registerCh = make(chan struct{})
-	}
-	if s.deregisterCh == nil {
-		s.deregisterCh = make(chan struct{})
-	}
 }
 
 // DeregisterCh returns a read only chan
@@ -207,4 +209,31 @@ func (c *Client) Notify(s *Service) {
 	case <-t.C:
 		t.Stop()
 	}
+}
+
+type value struct {
+	Val interface{}
+}
+
+// EncodeValue converts interface{} to a byte slice
+func EncodeValue(v interface{}) []byte {
+	val := value{
+		Val: v,
+	}
+	buf := new(bytes.Buffer)
+	enc := gob.NewEncoder(buf)
+	enc.Encode(val)
+
+	return buf.Bytes()
+}
+
+// DecodeValue converts byte slice to interface{}
+func DecodeValue(b []byte) interface{} {
+	// Decode
+	var data value
+	buf := bytes.NewBuffer(b)
+	dec := gob.NewDecoder(buf)
+	dec.Decode(&data)
+
+	return data.Val
 }

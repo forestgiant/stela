@@ -62,6 +62,7 @@ func (s *Server) Connect(req *stela.ConnectRequest, stream stela.Stela_ConnectSe
 				Port:     rs.Port,
 				Priority: rs.Priority,
 				Action:   rs.Action,
+				Value:    stela.EncodeValue(rs.Value),
 			}
 
 			if err := stream.Send(response); err != nil {
@@ -124,13 +125,14 @@ func (s *Server) Register(ctx context.Context, req *stela.RegisterRequest) (*ste
 
 	// Convert req to service
 	service := &stela.Service{
+		Client:   c,
 		Name:     req.Service.Name,
 		Target:   req.Service.Hostname,
 		Address:  req.Service.Address,
 		Port:     req.Service.Port,
 		Priority: req.Service.Priority,
 		Action:   stela.RegisterAction,
-		Client:   c,
+		Value:    stela.DecodeValue(req.Service.Value),
 	}
 
 	// Register service to store
@@ -139,7 +141,6 @@ func (s *Server) Register(ctx context.Context, req *stela.RegisterRequest) (*ste
 	}
 
 	// Notify all peers about the new service
-	service.Action = stela.RegisterAction
 	s.peerNotify(service)
 
 	return &stela.RegisterResponse{}, nil
@@ -155,21 +156,20 @@ func (s *Server) Deregister(ctx context.Context, req *stela.RegisterRequest) (*s
 
 	// Convert req to service
 	service := &stela.Service{
-		Name:     req.Service.Name,
-		Target:   req.Service.Hostname,
-		Address:  req.Service.Address,
-		Port:     req.Service.Port,
-		Priority: req.Service.Priority,
-		Action:   stela.RegisterAction,
-		Client:   c,
+		Client:  c,
+		Name:    req.Service.Name,
+		Target:  req.Service.Hostname,
+		Address: req.Service.Address,
+		Port:    req.Service.Port,
 	}
 
-	// Register service to store
-	s.Store.Deregister(service)
+	// Deregister service
+	ds := s.Store.Deregister(service)
 
 	// Notify all peers that a service was deregistered
-	service.Action = stela.DeregisterAction
-	s.peerNotify(service)
+	if ds != nil {
+		s.peerNotify(ds)
+	}
 
 	return &stela.RegisterResponse{}, nil
 }
@@ -202,16 +202,17 @@ func (s *Server) peerNotify(service *stela.Service) {
 				}
 				defer conn.Close()
 				c := stela.NewStelaClient(conn)
-				notifyReq := &stela.ServiceMessage{
+				serviceMessage := &stela.ServiceMessage{
 					Name:     service.Name,
 					Hostname: service.Target,
 					Address:  service.Address,
 					Port:     service.Port,
 					Priority: service.Priority,
 					Action:   service.Action,
+					Value:    stela.EncodeValue(service.Value),
 				}
 
-				_, err = c.NotifyClients(ctx, notifyReq)
+				_, err = c.NotifyClients(ctx, serviceMessage)
 				if err != nil {
 					fmt.Println("peerNotify err,", err)
 					return
@@ -240,6 +241,7 @@ func (s *Server) NotifyClients(ctx context.Context, req *stela.ServiceMessage) (
 		Port:     req.Port,
 		Priority: req.Priority,
 		Action:   req.Action,
+		Value:    stela.DecodeValue(req.Value),
 	}
 
 	s.Store.NotifyClients(service)
@@ -263,6 +265,7 @@ func (s *Server) Discover(ctx context.Context, req *stela.DiscoverRequest) (*ste
 			Address:  ds.Address,
 			Port:     ds.Port,
 			Priority: ds.Priority,
+			Value:    stela.EncodeValue(ds.Value),
 		}
 		srs = append(srs, sr)
 	}
@@ -284,6 +287,7 @@ func (s *Server) DiscoverOne(ctx context.Context, req *stela.DiscoverRequest) (*
 		Address:  service.Address,
 		Port:     service.Port,
 		Priority: service.Priority,
+		Value:    stela.EncodeValue(service.Value),
 	}, nil
 }
 
@@ -300,6 +304,7 @@ func (s *Server) DiscoverAll(ctx context.Context, req *stela.DiscoverAllRequest)
 			Address:  ds.Address,
 			Port:     ds.Port,
 			Priority: ds.Priority,
+			Value:    stela.EncodeValue(ds.Value),
 		}
 		srs = append(srs, sr)
 	}

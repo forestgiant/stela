@@ -72,8 +72,8 @@ func (m *MapStore) Register(s *stela.Service) error {
 	return nil
 }
 
-// Deregister removes a service from the map and notifies all client subscribers
-func (m *MapStore) Deregister(s *stela.Service) {
+// Deregister removes a service from the map and returns the service it deregistered
+func (m *MapStore) Deregister(s *stela.Service) *stela.Service {
 	// Notify clients that a new service is deregistered (for service name)
 	// m.NotifyClients(s, stela.DeregisterAction)
 
@@ -87,15 +87,20 @@ func (m *MapStore) Deregister(s *stela.Service) {
 		if rs.Equal(s) {
 			// Remove from slice
 			services = append(services[:i], services[i+1:]...)
+
+			// If that was the last service in the slice delete the key
+			if len(services) == 0 {
+				delete(m.services, s.Name)
+			} else {
+				m.services[s.Name] = services
+			}
+
+			rs.Action = stela.DeregisterAction
+			return rs
 		}
 	}
 
-	// If that was the last service in the slice delete the key
-	if len(services) == 0 {
-		delete(m.services, s.Name)
-	} else {
-		m.services[s.Name] = services
-	}
+	return nil
 }
 
 // NotifyClients let's all locally subscribed clients, on this stela instance, know about service subscription changes

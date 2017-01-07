@@ -5,7 +5,7 @@ import "gitlab.fg/go/stela"
 // Store represents a key value service storage backed by raft
 type Store interface {
 	Register(s *stela.Service) error
-	Deregister(s *stela.Service)
+	Deregister(s *stela.Service) *stela.Service
 	Discover(serviceName string) ([]*stela.Service, error)
 	DiscoverOne(serviceName string) (*stela.Service, error)
 	DiscoverAll() []*stela.Service

@@ -59,7 +59,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	stelaAddr := fmt.Sprintf("127.0.0.1:%d", *stelaPortPtr)
+	stelaAddr := fmt.Sprintf(":%d", *stelaPortPtr)
 	startMessage := fmt.Sprintf("Starting stela gRPC server on: %s and multicasting on port: %d", stelaAddr, *multicastPortPtr)
 	fmt.Println(startMessage)
 
@@ -127,7 +127,7 @@ func main() {
 	runtime.Gosched()
 
 	// Now register ourselves as a service
-	if err := registerStela(m, stelaAddr); err != nil {
+	if err := registerStela(m, networkAddr); err != nil {
 		logger.Error("error", err.Error(), stelaAddr)
 		os.Exit(1)
 	}

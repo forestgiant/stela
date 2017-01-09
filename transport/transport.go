@@ -423,7 +423,7 @@ func (s *Server) PeerDiscoverOne(ctx context.Context, req *stela.DiscoverRequest
 
 	// Give back a random result
 	var index int
-	if len(results) > 1 {
+	if len(results) < 1 {
 		index = 1
 	} else {
 		index = rand.Intn(len(results))

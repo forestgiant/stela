@@ -207,6 +207,7 @@ func (c *Client) Discover(ctx context.Context, serviceName string) ([]*stela.Ser
 			Address:  ds.Address,
 			Port:     ds.Port,
 			Priority: ds.Priority,
+			Value:    stela.DecodeValue(ds.Value),
 		}
 		services = append(services, s)
 	}
@@ -226,7 +227,9 @@ func (c *Client) DiscoverOne(ctx context.Context, serviceName string) (*stela.Se
 		Target:   resp.Hostname,
 		Address:  resp.Address,
 		Port:     resp.Port,
-		Priority: resp.Priority}, nil
+		Priority: resp.Priority,
+		Value:    stela.DecodeValue(resp.Value),
+	}, nil
 }
 
 func (c *Client) DiscoverAll(ctx context.Context) ([]*stela.Service, error) {
@@ -244,6 +247,7 @@ func (c *Client) DiscoverAll(ctx context.Context) ([]*stela.Service, error) {
 			Address:  ds.Address,
 			Port:     ds.Port,
 			Priority: ds.Priority,
+			Value:    stela.DecodeValue(ds.Value),
 		}
 		services = append(services, s)
 	}

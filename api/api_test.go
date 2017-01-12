@@ -315,6 +315,84 @@ func TestConnectSubscribe(t *testing.T) {
 	cancel()
 }
 
+// TestValue
+func TestValue(t *testing.T) {
+	// value
+	value := "Test Value"
+
+	// Create a client and subscribe
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeOut)
+	defer cancelFunc()
+
+	serviceName := "valuetest.services.fg"
+	c, err := NewClient(ctx, stela.DefaultStelaAddress, "../testdata/ca.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	callback := func(s *stela.Service) {
+		if s.Value != value {
+			t.Fatalf("Value is incorrected. Got %v, Wanted: %v", s.Value, value)
+		}
+	}
+
+	// Subscribe to a service name and verify a value is returned
+	subscribeCtx, cancelSubscribe := context.WithCancel(context.Background())
+	defer cancelSubscribe()
+	if err := c.Subscribe(subscribeCtx, serviceName, callback); err != nil {
+		t.Fatal(err)
+	}
+
+	// Register a service with a value
+	service := &stela.Service{
+		Name:    serviceName,
+		Target:  "jlu.macbook",
+		Address: "127.0.0.1",
+		Port:    9000,
+		Value:   value,
+	}
+	if err := c.RegisterService(ctx, service); err != nil {
+		t.Fatal(err)
+	}
+
+	// DiscoverOne
+	s, err := c.DiscoverOne(ctx, serviceName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Value != value {
+		t.Fatalf("Value is incorrected. Got %v, Wanted: %v", s.Value, value)
+	}
+
+	// Discover the service and make sure the value is returned
+	ds, err := c.Discover(ctx, serviceName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range ds {
+		if s.Name == serviceName {
+			if s.Value != value {
+				t.Fatalf("Value is incorrected. Got %v, Wanted: %v", ds[0].Value, value)
+			}
+		}
+	}
+
+	// DiscoverAll
+	das, err := c.DiscoverAll(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range das {
+		if s.Name == serviceName {
+			if s.Value != value {
+				t.Fatalf("Value is incorrected. Got %v, Wanted: %v", ds[0].Value, value)
+			}
+		}
+	}
+
+}
+
 // equalServices takes two slices of stela.Service and make sure they are correct
 func equalServices(t *testing.T, s1, s2 []*stela.Service) {
 	// Make sure the services returned were the ones sent

@@ -5,3 +5,4 @@ logs
 *.db
 *.out
 examples/membership/membership
+cmd/stelawd/stelawd

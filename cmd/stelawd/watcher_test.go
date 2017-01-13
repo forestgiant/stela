@@ -5,10 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
-
 	"gitlab.fg/go/stela"
 	"gitlab.fg/go/stela/api"
+	"golang.org/x/net/context"
 )
 
 func Test_valid(t *testing.T) {
@@ -111,6 +110,11 @@ func Test_watch(t *testing.T) {
 		{&watcher{
 			interval:    time.Duration(1 * time.Millisecond),
 			service:     &stela.Service{Name: "Test_watch.service.fg", Address: "127.0.0.1", Port: 5000},
+			stelaClient: stelaClient,
+		}, false},
+		{&watcher{
+			interval:    time.Duration(1 * time.Millisecond),
+			service:     &stela.Service{Name: "Test_watch_stela.service.fg", Address: "127.0.0.1", Port: 9000},
 			stelaClient: stelaClient,
 		}, false},
 	}

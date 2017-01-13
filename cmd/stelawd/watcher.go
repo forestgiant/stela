@@ -36,7 +36,6 @@ func (w *watcher) valid() bool {
 	if w.service.Address == "" {
 		return false
 	}
-
 	return true
 }
 

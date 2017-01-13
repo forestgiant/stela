@@ -2,7 +2,7 @@
 # service name, endpoint, interval (ms)
 
 # Service 1
-minio.service.fg, 127.0.0.1:9000, 1000
+minio.service.fg, play.minio.io:8000, 1000
 
 # Service 2
 minio.service.fg, 127.0.0.1:9001, 2000

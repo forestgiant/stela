@@ -60,7 +60,7 @@ func (w *watcher) watch() error {
 // updateRegistry registers or deregisters a service with the stela client based on net.Dial
 // if it registers it returns true, if it deregisters it returns false
 func (w *watcher) updateRegistry() bool {
-	registerCtx, cancelRegister := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	registerCtx, cancelRegister := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancelRegister()
 
 	// Verify service is running
@@ -71,11 +71,13 @@ func (w *watcher) updateRegistry() bool {
 		return false
 	}
 	conn.Close()
-	w.stelaClient.RegisterService(registerCtx, w.service)
+	if err := w.stelaClient.RegisterService(registerCtx, w.service); err != nil {
+		return false
+	}
 	return true
 }
 
-func (w *watcher) String() string {
+func (w watcher) String() string {
 	return fmt.Sprintf("Name: %s, Address: %s, Port: %d, Interval: %v", w.service.Name, w.service.Address, w.service.Port, w.interval)
 }
 

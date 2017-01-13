@@ -8,41 +8,55 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"gitlab.fg/go/stela"
+	"gitlab.fg/go/stela/api"
 )
 
-type watcher struct {
-	service  *stela.Service
-	interval time.Duration
-}
-
 func main() {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancelFunc()
+	stelaClient, err := api.NewClient(ctx, stela.DefaultStelaAddress, "../testdata/ca.pem")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer stelaClient.Close()
+
 	// Read service names and ip address/ports from config
-	watchers, err := createWatchers("watch.list")
+	watchers, err := createWatchers(stelaClient, "watch.list")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Print status for each service being watched
 	for _, w := range watchers {
-		// Base on the interval in the config check net.Listen to see if the address/port is taken.
-
-		// If it is then create a client connection to stela.
-
-		// If it's not then close the connection
-
-		fmt.Printf(
-			"Registering service: %s and monitoring every %d milliseconds \n",
-			fmt.Sprintf("Name: %s, Address: %s, Port: %d", w.service.Name, w.service.Address, w.service.Port),
-			w.interval)
+		w.watch()
+		fmt.Printf("Registering service: %s \n", w)
 	}
+
+	// Listen for shutdown signal
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	select {
+	case <-sigs:
+		// stop all watchers
+		for _, w := range watchers {
+			w.stop()
+		}
+		fmt.Println("Stopping watch dog")
+		return
+	}
+
 }
 
-func createWatchers(filePath string) ([]*watcher, error) {
+func createWatchers(stelaClient *api.Client, filePath string) ([]*watcher, error) {
 	f, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -85,7 +99,8 @@ func createWatchers(filePath string) ([]*watcher, error) {
 				Address: ip,
 				Port:    int32(port),
 			},
-			interval: time.Millisecond * time.Duration(interval),
+			interval:    time.Millisecond * time.Duration(interval),
+			stelaClient: stelaClient,
 		}
 
 		watchers = append(watchers, w)

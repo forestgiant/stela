@@ -45,11 +45,13 @@ func main() {
 		stelaPortPtr       = flag.Int("port", stela.DefaultStelaPort, stelaPortUsage)
 		multicastPortUsage = "Port used to multicast to other stela members."
 		multicastPortPtr   = flag.Int("multicast", stela.DefaultMulticastPort, multicastPortUsage)
+		caFileUsage        = "Path to the ca file for gRPC client to connect with."
+		caFilePtr          = flag.String("cafile", "../certs/ca.pem", caFileUsage)
 	)
 	flag.Parse()
 
 	if *statusPtr {
-		stelas, err := discoverStelas()
+		stelas, err := discoverStelas(*caFilePtr)
 		if err != nil {
 			fmt.Println("There are 0 stela instances currently running. Make sure you are running a local stela instance.")
 		} else {
@@ -172,8 +174,8 @@ func registerStela(s store.Store, networkAddr string) error {
 	return nil
 }
 
-func discoverStelas() ([]*stela.Service, error) {
-	c, err := api.NewClient(context.Background(), stela.DefaultStelaAddress, "../certs/ca.pem")
+func discoverStelas(caFile string) ([]*stela.Service, error) {
+	c, err := api.NewClient(context.Background(), stela.DefaultStelaAddress, caFile)
 	if err != nil {
 		return nil, err
 	}

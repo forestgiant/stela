@@ -3,9 +3,9 @@ package main
 import (
 	"bufio"
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -14,6 +14,9 @@ import (
 	"syscall"
 	"time"
 
+	fglog "github.com/forestgiant/log"
+	"github.com/forestgiant/semver"
+
 	"golang.org/x/net/context"
 
 	"gitlab.fg/go/stela"
@@ -21,23 +24,44 @@ import (
 )
 
 func main() {
+	logger := fglog.Logger{}.With("time", fglog.DefaultTimestamp, "caller", fglog.DefaultCaller, "cli", "stelawd")
+	err := semver.SetVersion(stela.Version)
+	if err != nil {
+		logger.Error("error", err.Error())
+		os.Exit(1)
+	}
+
+	// Check for command line configuration flags
+	var (
+		watcherListUsage = "Path to the list of services to watch."
+		watcherListPtr   = flag.String("watchlist", "watch.list", watcherListUsage)
+		caFileUsage      = "Path to the ca file for gRPC client to connect with."
+		caFilePtr        = flag.String("cafile", "../certs/ca.pem", caFileUsage)
+	)
+	flag.Parse()
+
 	ctx, cancelFunc := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancelFunc()
-	stelaClient, err := api.NewClient(ctx, stela.DefaultStelaAddress, "../testdata/ca.pem")
+	stelaClient, err := api.NewClient(ctx, stela.DefaultStelaAddress, *caFilePtr)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("Failed to create stela client. Make sure there is a stela instance running", "error", err.Error())
+		os.Exit(1)
 	}
 	defer stelaClient.Close()
 
 	// Read service names and ip address/ports from config
-	watchers, err := createWatchers(stelaClient, "watch.list")
+	watchers, err := createWatchers(stelaClient, *watcherListPtr)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("Failed to create watchers:", "error", err.Error())
+		os.Exit(1)
 	}
 
 	// Print status for each service being watched
 	for _, w := range watchers {
-		w.watch()
+		if err := w.watch(); err != nil {
+			logger.Error("Failed to watch:", "error", err.Error(), "watcher:", w)
+			os.Exit(1)
+		}
 		fmt.Printf("Registering service: %s \n", w)
 	}
 
@@ -103,6 +127,9 @@ func createWatchers(stelaClient *api.Client, filePath string) ([]*watcher, error
 			stelaClient: stelaClient,
 		}
 
+		if !w.valid() {
+			return nil, fmt.Errorf("Invalid inputs. Could not process record: %v", record)
+		}
 		watchers = append(watchers, w)
 	}
 

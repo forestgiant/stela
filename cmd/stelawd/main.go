@@ -50,7 +50,12 @@ func main() {
 	defer stelaClient.Close()
 
 	// Read service names and ip address/ports from config
-	watchers, err := createWatchers(stelaClient, *watcherListPtr)
+	config, err := openConfig(*watcherListPtr)
+	if err != nil {
+		logger.Error("Failed to open config:", "error", err.Error())
+		os.Exit(1)
+	}
+	watchers, err := createWatchers(stelaClient, config)
 	if err != nil {
 		logger.Error("Failed to create watchers:", "error", err.Error())
 		os.Exit(1)
@@ -80,12 +85,17 @@ func main() {
 
 }
 
-func createWatchers(stelaClient *api.Client, filePath string) ([]*watcher, error) {
+func openConfig(filePath string) (io.Reader, error) {
 	f, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
-	r := csv.NewReader(bufio.NewReader(f))
+
+	return bufio.NewReader(f), nil
+}
+
+func createWatchers(stelaClient *api.Client, config io.Reader) ([]*watcher, error) {
+	r := csv.NewReader(config)
 	r.Comment = '#'
 	var watchers []*watcher
 

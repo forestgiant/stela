@@ -1,48 +1,114 @@
 package main
 
 import (
+	"io/ioutil"
+	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
-
 	"gitlab.fg/go/stela"
 	"gitlab.fg/go/stela/api"
+	"golang.org/x/net/context"
 )
 
+func createTestConfigFile(t *testing.T, content string) *os.File {
+	c := []byte(content)
+	tmpFile, err := ioutil.TempFile("", "testConfig.list")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := tmpFile.Write(c); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	return tmpFile
+}
+
+func Test_openConfig(t *testing.T) {
+	succesFile := createTestConfigFile(t, `# Service 1
+minio.service.fg, play.minio.io:8000, 1000`)
+	defer os.Remove(succesFile.Name())
+
+	var tests = []struct {
+		filePath   string
+		shouldFail bool
+	}{
+		{"", true},
+		{succesFile.Name(), false},
+	}
+
+	for _, test := range tests {
+		_, err := openConfig(test.filePath)
+		if (err != nil) != test.shouldFail {
+			t.Fatal(err)
+		}
+	}
+}
+
 func Test_createWatchers(t *testing.T) {
+
 	stelaClient, err := api.NewClient(context.TODO(), stela.DefaultStelaAddress, "")
 	if err != nil {
 		t.Fatal("Failed to create stela client. Make sure there is a stela instance running", "error", err.Error())
 	}
 	defer stelaClient.Close()
 
+	// definde test config
+	successConfig := `# Service 1
+minio.service.fg, play.minio.io:8000, 1000`
+
+	failConfigService := `# Service 1
+, play.minio.io:8000, 1000`
+
+	failConfigAddress := `# Service 1
+minio.service.fg, , 1000`
+
+	failConfigInterval := `# Service 1
+minio.service.fg, play.minio.io:8000, `
+
+	failConfigAtoi := `# Service 1
+minio.service.fg, play.minio.io:NaN, 9000`
+
 	var tests = []struct {
-		filePath string
-		expected []*watcher
+		stelaClient *api.Client
+		config      string
+		expected    []*watcher
+		shouldFail  bool
 	}{
-		{"testfiles/test.list", []*watcher{
-			&watcher{
-				service: &stela.Service{
-					Name:    "minio.service.fg",
-					Address: "play.minio.io",
-					Port:    8000,
+		{stelaClient, failConfigService, nil, true},
+		{stelaClient, failConfigAddress, nil, true},
+		{stelaClient, failConfigInterval, nil, true},
+		{stelaClient, failConfigAtoi, nil, true},
+		{nil, successConfig, nil, true},
+		{stelaClient, successConfig,
+			[]*watcher{
+				&watcher{
+					service: &stela.Service{
+						Name:    "minio.service.fg",
+						Address: "play.minio.io",
+						Port:    8000,
+					},
+					interval:    time.Duration(1000 * time.Millisecond),
+					stelaClient: stelaClient,
 				},
-				interval:    time.Duration(1000 * time.Millisecond),
-				stelaClient: stelaClient,
-			},
-		}},
+			}, false},
 	}
 
 	for _, test := range tests {
-		w, err := createWatchers(stelaClient, test.filePath)
-		if err != nil {
+		config := strings.NewReader(test.config)
+		w, err := createWatchers(test.stelaClient, config)
+		if (err != nil) != test.shouldFail {
 			t.Fatal(err)
 		}
 
 		if !reflect.DeepEqual(w, test.expected) {
-			t.Fatal("Watchers not equal")
+			t.Fatalf("Watchers not equal. Got: %v, Wanted: %v", w, test.expected)
 		}
 	}
 }

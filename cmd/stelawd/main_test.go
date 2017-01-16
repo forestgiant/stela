@@ -61,19 +61,22 @@ func Test_createWatchers(t *testing.T) {
 
 	// definde test config
 	successConfig := `# Service 1
-minio.service.fg, play.minio.io:8000, 1000`
+minio.service.fg, play.minio.io:8000, 1000, success value`
 
-	failConfigService := `# Service 1
-, play.minio.io:8000, 1000`
+	failConfigService := `# Service 2
+, play.minio.io:8000, 1000, value test`
 
-	failConfigAddress := `# Service 1
-minio.service.fg, , 1000`
+	failConfigAddress := `# Service 3
+minio.service.fg, , 1000, value test`
 
-	failConfigInterval := `# Service 1
-minio.service.fg, play.minio.io:8000, `
+	failConfigInterval := `# Service 4
+minio.service.fg, play.minio.io:8000, value test`
 
-	failConfigAtoi := `# Service 1
-minio.service.fg, play.minio.io:NaN, 9000`
+	failConfigAtoi := `# Service 5
+minio.service.fg, play.minio.io:NaN, 9000, value test`
+
+	failConfigValue := `# Service 1
+minio.service.fg, play.minio.io:8000, 1000, `
 
 	var tests = []struct {
 		stelaClient *api.Client
@@ -85,6 +88,7 @@ minio.service.fg, play.minio.io:NaN, 9000`
 		{stelaClient, failConfigAddress, nil, true},
 		{stelaClient, failConfigInterval, nil, true},
 		{stelaClient, failConfigAtoi, nil, true},
+		{stelaClient, failConfigValue, nil, true},
 		{nil, successConfig, nil, true},
 		{stelaClient, successConfig,
 			[]*watcher{
@@ -93,6 +97,7 @@ minio.service.fg, play.minio.io:NaN, 9000`
 						Name:    "minio.service.fg",
 						Address: "play.minio.io",
 						Port:    8000,
+						Value:   "success value",
 					},
 					interval:    time.Duration(1000 * time.Millisecond),
 					stelaClient: stelaClient,
@@ -100,11 +105,11 @@ minio.service.fg, play.minio.io:NaN, 9000`
 			}, false},
 	}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		config := strings.NewReader(test.config)
 		w, err := createWatchers(test.stelaClient, config)
 		if (err != nil) != test.shouldFail {
-			t.Fatal(err)
+			t.Fatalf("Test %d failed: %v", i, err)
 		}
 
 		if !reflect.DeepEqual(w, test.expected) {

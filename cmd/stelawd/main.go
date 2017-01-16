@@ -106,7 +106,7 @@ func createWatchers(stelaClient *api.Client, config io.Reader) ([]*watcher, erro
 		}
 
 		// Verify serviceName
-		if record[0] == "" {
+		if strings.TrimSpace(record[0]) == "" {
 			return nil, fmt.Errorf("Could not process service name for: %v", record)
 		}
 		serviceName := strings.TrimSpace(record[0])
@@ -127,11 +127,19 @@ func createWatchers(stelaClient *api.Client, config io.Reader) ([]*watcher, erro
 			return nil, fmt.Errorf("Could not process interval %v for: %v", record[2], record)
 		}
 
+		// Create and verify value
+		// Value can only be a string for a stelawd config
+		if strings.TrimSpace(record[3]) == "" {
+			return nil, fmt.Errorf("Could not process value for: %v", record)
+		}
+		value := strings.TrimSpace(record[3])
+
 		w := &watcher{
 			service: &stela.Service{
 				Name:    serviceName,
 				Address: ip,
 				Port:    int32(port),
+				Value:   value,
 			},
 			interval:    time.Millisecond * time.Duration(interval),
 			stelaClient: stelaClient,

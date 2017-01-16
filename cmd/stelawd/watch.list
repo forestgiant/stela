@@ -1,11 +1,11 @@
 # stela watch-dog config
-# service name, host:port, interval (ms), value
+# service name, host:port, value, interval (ms)
 
 # Service 1
-minio.service.fg, play.minio.io:8000, 1000, value string 1
+minio.service.fg, play.minio.io:8000, value string 1, 1000
 
 # Service 2
-minio.service.fg, 127.0.0.1:9001, 2000, value string 2
+minio.service.fg, 127.0.0.1:9001, value string 2, 2000
 
 # Service 3
-minio.service.fg, 127.0.0.1:9002, 3000, value string 3
+minio.service.fg, 127.0.0.1:9002, value string 3, 3000

@@ -61,22 +61,25 @@ func Test_createWatchers(t *testing.T) {
 
 	// definde test config
 	successConfig := `# Service 1
-minio.service.fg, play.minio.io:8000, 1000, success value`
+minio.service.fg, play.minio.io:8000, success value, 1000`
 
 	failConfigService := `# Service 2
-, play.minio.io:8000, 1000, value test`
+, play.minio.io:8000, value test, 1000`
 
 	failConfigAddress := `# Service 3
-minio.service.fg, , 1000, value test`
+minio.service.fg, ,value test, 1000`
 
 	failConfigInterval := `# Service 4
-minio.service.fg, play.minio.io:8000, value test`
+minio.service.fg, play.minio.io:8000, value test, `
 
 	failConfigAtoi := `# Service 5
-minio.service.fg, play.minio.io:NaN, 9000, value test`
+minio.service.fg, play.minio.io:NaN, value test, 9000`
 
-	failConfigValue := `# Service 1
-minio.service.fg, play.minio.io:8000, 1000, `
+	failConfigValue := `# Service 6
+minio.service.fg, play.minio.io:8000, ,1000`
+
+	failConfigRange := `# Service 7
+minio.service.fg, play.minio.io:8000, value test`
 
 	var tests = []struct {
 		stelaClient *api.Client
@@ -89,6 +92,7 @@ minio.service.fg, play.minio.io:8000, 1000, `
 		{stelaClient, failConfigInterval, nil, true},
 		{stelaClient, failConfigAtoi, nil, true},
 		{stelaClient, failConfigValue, nil, true},
+		{stelaClient, failConfigRange, nil, true},
 		{nil, successConfig, nil, true},
 		{stelaClient, successConfig,
 			[]*watcher{

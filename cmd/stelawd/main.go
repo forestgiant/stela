@@ -105,6 +105,10 @@ func createWatchers(stelaClient *api.Client, config io.Reader) ([]*watcher, erro
 			break
 		}
 
+		if len(record) < 4 {
+			return nil, fmt.Errorf("Could not process record: %v. Not enough fields.", record)
+		}
+
 		// Verify serviceName
 		if strings.TrimSpace(record[0]) == "" {
 			return nil, fmt.Errorf("Could not process service name for: %v", record)
@@ -121,18 +125,18 @@ func createWatchers(stelaClient *api.Client, config io.Reader) ([]*watcher, erro
 			return nil, fmt.Errorf("Could not process port: %v for: %v", p, record)
 		}
 
-		// Create and verify interval
-		interval, err := strconv.Atoi(strings.TrimSpace(record[2]))
-		if err != nil {
-			return nil, fmt.Errorf("Could not process interval %v for: %v", record[2], record)
-		}
-
 		// Create and verify value
 		// Value can only be a string for a stelawd config
-		if strings.TrimSpace(record[3]) == "" {
+		if strings.TrimSpace(record[2]) == "" {
 			return nil, fmt.Errorf("Could not process value for: %v", record)
 		}
-		value := strings.TrimSpace(record[3])
+		value := strings.TrimSpace(record[2])
+
+		// Create and verify interval
+		interval, err := strconv.Atoi(strings.TrimSpace(record[3]))
+		if err != nil {
+			return nil, fmt.Errorf("Could not process interval %v for: %v", record[3], record)
+		}
 
 		w := &watcher{
 			service: &stela.Service{

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package stela;
+package pb;
 
 service Stela {
     rpc AddClient(AddClientRequest) returns (AddClientResponse) {}

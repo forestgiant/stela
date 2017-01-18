@@ -24,6 +24,7 @@ import (
 	"gitlab.fg/go/disco/node"
 	"gitlab.fg/go/stela"
 	"gitlab.fg/go/stela/api"
+	"gitlab.fg/go/stela/pb"
 	"gitlab.fg/go/stela/store"
 	"gitlab.fg/go/stela/store/mapstore"
 	"gitlab.fg/go/stela/transport"
@@ -121,7 +122,7 @@ func main() {
 
 	// opts = []grpc.ServerOption{grpc.Creds(creds)}
 	grpcServer := grpc.NewServer(opts...)
-	stela.RegisterStelaServer(grpcServer, t)
+	pb.RegisterStelaServer(grpcServer, t)
 
 	go func() {
 		grpcServer.Serve(listener)

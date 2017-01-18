@@ -8,6 +8,7 @@ import (
 
 	"github.com/forestgiant/netutil"
 	"gitlab.fg/go/stela"
+	"gitlab.fg/go/stela/pb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -17,7 +18,7 @@ type Client struct {
 
 	mu sync.RWMutex
 	// ctx       context.Context
-	rpc       stela.StelaClient
+	rpc       pb.StelaClient
 	conn      *grpc.ClientConn
 	Hostname  string
 	callbacks map[string]func(s *stela.Service)
@@ -45,10 +46,10 @@ func NewClient(ctx context.Context, stelaAddress string, caFile string) (*Client
 	if err != nil {
 		return nil, err
 	}
-	c.rpc = stela.NewStelaClient(c.conn)
+	c.rpc = pb.NewStelaClient(c.conn)
 
 	// Add the Client
-	resp, err := c.rpc.AddClient(ctx, &stela.AddClientRequest{ClientAddress: c.Address})
+	resp, err := c.rpc.AddClient(ctx, &pb.AddClientRequest{ClientAddress: c.Address})
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +71,7 @@ func (c *Client) init() {
 
 func (c *Client) connect() error {
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	stream, err := c.rpc.Connect(ctx, &stela.ConnectRequest{ClientId: c.ID})
+	stream, err := c.rpc.Connect(ctx, &pb.ConnectRequest{ClientId: c.ID})
 	if err != nil {
 		return err
 	}
@@ -109,7 +110,7 @@ func (c *Client) connect() error {
 
 func (c *Client) Subscribe(ctx context.Context, serviceName string, callback func(s *stela.Service)) error {
 	_, err := c.rpc.Subscribe(ctx,
-		&stela.SubscribeRequest{
+		&pb.SubscribeRequest{
 			ClientId:    c.ID,
 			ServiceName: serviceName,
 		})
@@ -133,7 +134,7 @@ func (c *Client) Unsubscribe(ctx context.Context, serviceName string) error {
 	}
 
 	_, err := c.rpc.Unsubscribe(ctx,
-		&stela.SubscribeRequest{
+		&pb.SubscribeRequest{
 			ClientId:    c.ID,
 			ServiceName: serviceName,
 		})
@@ -153,9 +154,9 @@ func (c *Client) RegisterService(ctx context.Context, s *stela.Service) error {
 	s.Target = c.Hostname
 	s.Address = c.Address
 	_, err := c.rpc.Register(ctx,
-		&stela.RegisterRequest{
+		&pb.RegisterRequest{
 			ClientId: c.ID,
-			Service: &stela.ServiceMessage{
+			Service: &pb.ServiceMessage{
 				Name:     s.Name,
 				Hostname: s.Target,
 				Address:  s.Address,
@@ -175,9 +176,9 @@ func (c *Client) DeregisterService(ctx context.Context, s *stela.Service) error 
 	s.Address = c.Address
 	s.Target = c.Hostname
 	_, err := c.rpc.Deregister(ctx,
-		&stela.RegisterRequest{
+		&pb.RegisterRequest{
 			ClientId: c.ID,
-			Service: &stela.ServiceMessage{
+			Service: &pb.ServiceMessage{
 				Name:     s.Name,
 				Hostname: s.Target,
 				Address:  s.Address,
@@ -193,7 +194,7 @@ func (c *Client) DeregisterService(ctx context.Context, s *stela.Service) error 
 }
 
 func (c *Client) Discover(ctx context.Context, serviceName string) ([]*stela.Service, error) {
-	resp, err := c.rpc.PeerDiscover(ctx, &stela.DiscoverRequest{ServiceName: serviceName})
+	resp, err := c.rpc.PeerDiscover(ctx, &pb.DiscoverRequest{ServiceName: serviceName})
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +217,7 @@ func (c *Client) Discover(ctx context.Context, serviceName string) ([]*stela.Ser
 }
 
 func (c *Client) DiscoverOne(ctx context.Context, serviceName string) (*stela.Service, error) {
-	resp, err := c.rpc.PeerDiscoverOne(ctx, &stela.DiscoverRequest{ServiceName: serviceName})
+	resp, err := c.rpc.PeerDiscoverOne(ctx, &pb.DiscoverRequest{ServiceName: serviceName})
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +234,7 @@ func (c *Client) DiscoverOne(ctx context.Context, serviceName string) (*stela.Se
 }
 
 func (c *Client) DiscoverAll(ctx context.Context) ([]*stela.Service, error) {
-	resp, err := c.rpc.PeerDiscoverAll(ctx, &stela.DiscoverAllRequest{})
+	resp, err := c.rpc.PeerDiscoverAll(ctx, &pb.DiscoverAllRequest{})
 	if err != nil {
 		return nil, err
 	}

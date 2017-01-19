@@ -10,6 +10,8 @@ import (
 
 	"golang.org/x/net/context"
 
+	"sync"
+
 	"gitlab.fg/go/stela"
 )
 
@@ -233,56 +235,50 @@ func TestConnectSubscribe(t *testing.T) {
 			Name:    serviceName,
 			Target:  "jlu.macbook",
 			Address: "127.0.0.2",
-			Port:    9001,
+			Port:    65349,
 		},
 		&stela.Service{
 			Name:    serviceName,
 			Target:  "jlu.macbook",
 			Address: "127.0.0.3",
-			Port:    9002,
+			Port:    653490,
 		},
 	}
 
 	waitCh := make(chan struct{})
-	var count int
-	callback := func(s *stela.Service) {
-		count++
-		// Test to make sure c2 receives all services registered with c
-		if count == len(testServices) {
-			close(waitCh)
-		}
+	wg := sync.WaitGroup{}
+	wg.Add(len(testServices) * 2) // Add dobule for both callbacks
+	c2Found := []*stela.Service{}
+	c2Callback := func(s *stela.Service) {
+		c2Found = append(c2Found, s)
 
 		if s.Action != stela.RegisterAction {
 			t.Fatal("Service should be register action")
 		}
+		wg.Done()
 	}
 
-	callback2 := func(s *stela.Service) {
-		count++
-		// Test to make sure c3 receives all services registered with c
-		if count == len(testServices) {
-			close(waitCh)
-		}
+	c3Found := []*stela.Service{}
+	c3Callback := func(s *stela.Service) {
+		c3Found = append(c3Found, s)
 
 		if s.Action != stela.RegisterAction {
 			t.Fatal("Service should be register action")
 		}
+		wg.Done()
 	}
-
-	// if err := c.Subscribe(serviceName, callback); err != nil {
-	// 	t.Fatal(err)
-	// }
 
 	subscribeCtx, cancelSubscribe := context.WithTimeout(context.Background(), timeout)
 	defer cancelSubscribe()
-	if err := c2.Subscribe(subscribeCtx, serviceName, callback); err != nil {
+	if err := c2.Subscribe(subscribeCtx, serviceName, c2Callback); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c3.Subscribe(subscribeCtx, serviceName, callback2); err != nil {
+	if err := c3.Subscribe(subscribeCtx, serviceName, c3Callback); err != nil {
 		t.Fatal(err)
 	}
 
+	// Now register all testServices from the first client
 	for _, s := range testServices {
 		registerCtx, cancelRegister := context.WithCancel(context.Background())
 		defer cancelRegister()
@@ -290,6 +286,11 @@ func TestConnectSubscribe(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+
+	go func() {
+		wg.Wait()
+		close(waitCh)
+	}()
 
 	// Wait for either a timeout or all the subscribed services to be read
 	select {
@@ -300,6 +301,10 @@ func TestConnectSubscribe(t *testing.T) {
 			t.Fatal("TestConnectSubscribe timed out: ", ctx.Err())
 		}
 	}
+
+	// Make sure the services c2, c3 received were correct
+	equalServices(t, testServices, c2Found)
+	equalServices(t, testServices, c3Found)
 
 	unsubscribeCtx, cancelUnsubscribe := context.WithTimeout(context.Background(), timeout)
 	defer cancelUnsubscribe()

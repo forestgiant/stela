@@ -155,7 +155,7 @@ func main() {
 }
 
 func registerStela(s store.Store, networkAddr string) error {
-	host, err := os.Hostname()
+	name, err := os.Hostname()
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func registerStela(s store.Store, networkAddr string) error {
 	if err != nil {
 		return err
 	}
-	if err := s.Register(&stela.Service{Name: stela.ServiceName, Target: host, Address: ip, Port: int32(port)}); err != nil {
+	if err := s.Register(&stela.Service{Name: stela.ServiceName, Hostname: name, IPv4: ip, Port: int32(port)}); err != nil {
 		return err
 	}
 

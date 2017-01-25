@@ -1,7 +1,6 @@
 package mapstore
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"net"
@@ -60,6 +59,11 @@ func (m *MapStore) Register(s *stela.Service) error {
 
 	// Set all new incoming services Priority to 0
 	s.Priority = 0
+
+	// Generate a unique id for the service
+	if err := s.GenerateID(); err != nil {
+		return err
+	}
 
 	// Add service to the beginning of the services map since it's new
 	m.muServices.Lock()
@@ -211,11 +215,9 @@ func (m *MapStore) AddClient(c *stela.Client) error {
 	m.clients = append(m.clients, c)
 
 	// client id is the index of the client just added
-	clientid, err := generateID(10)
-	if err != nil {
+	if err := c.GenerateID(); err != nil {
 		return err
 	}
-	c.ID = clientid
 
 	return nil
 }
@@ -361,12 +363,4 @@ func (m *MapStore) rotateServices(serviceName string) error {
 	}
 
 	return nil
-}
-
-func generateID(length int) (string, error) {
-	b := make([]byte, length)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%X", b), nil
 }

@@ -58,8 +58,9 @@ func (s *Server) Connect(req *pb.ConnectRequest, stream pb.Stela_ConnectServer) 
 		case rs := <-c.SubscribeCh():
 			response := &pb.ServiceMessage{
 				Name:     rs.Name,
-				Hostname: rs.Target,
-				Address:  rs.Address,
+				Hostname: rs.Hostname,
+				IPv4:     rs.IPv4,
+				IPv6:     rs.IPv6,
 				Port:     rs.Port,
 				Priority: rs.Priority,
 				Action:   rs.Action,
@@ -128,8 +129,9 @@ func (s *Server) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.Reg
 	service := &stela.Service{
 		Client:   c,
 		Name:     req.Service.Name,
-		Target:   req.Service.Hostname,
-		Address:  req.Service.Address,
+		Hostname: req.Service.Hostname,
+		IPv4:     req.Service.IPv4,
+		IPv6:     req.Service.IPv6,
 		Port:     req.Service.Port,
 		Priority: req.Service.Priority,
 		Action:   stela.RegisterAction,
@@ -157,11 +159,12 @@ func (s *Server) Deregister(ctx context.Context, req *pb.RegisterRequest) (*pb.R
 
 	// Convert req to service
 	service := &stela.Service{
-		Client:  c,
-		Name:    req.Service.Name,
-		Target:  req.Service.Hostname,
-		Address: req.Service.Address,
-		Port:    req.Service.Port,
+		Client:   c,
+		Name:     req.Service.Name,
+		Hostname: req.Service.Hostname,
+		IPv4:     req.Service.IPv4,
+		IPv6:     req.Service.IPv6,
+		Port:     req.Service.Port,
 	}
 
 	// Deregister service
@@ -205,8 +208,9 @@ func (s *Server) peerNotify(service *stela.Service) {
 				c := pb.NewStelaClient(conn)
 				serviceMessage := &pb.ServiceMessage{
 					Name:     service.Name,
-					Hostname: service.Target,
-					Address:  service.Address,
+					Hostname: service.Hostname,
+					IPv4:     service.IPv4,
+					IPv6:     service.IPv6,
 					Port:     service.Port,
 					Priority: service.Priority,
 					Action:   service.Action,
@@ -237,8 +241,9 @@ func (s *Server) NotifyClients(ctx context.Context, req *pb.ServiceMessage) (*pb
 	// Convert req to service
 	service := &stela.Service{
 		Name:     req.Name,
-		Target:   req.Hostname,
-		Address:  req.Address,
+		Hostname: req.Hostname,
+		IPv4:     req.IPv4,
+		IPv6:     req.IPv6,
 		Port:     req.Port,
 		Priority: req.Priority,
 		Action:   req.Action,
@@ -262,8 +267,9 @@ func (s *Server) Discover(ctx context.Context, req *pb.DiscoverRequest) (*pb.Dis
 	for _, ds := range services {
 		sr := &pb.ServiceMessage{
 			Name:     ds.Name,
-			Hostname: ds.Target,
-			Address:  ds.Address,
+			Hostname: ds.Hostname,
+			IPv4:     ds.IPv4,
+			IPv6:     ds.IPv6,
 			Port:     ds.Port,
 			Priority: ds.Priority,
 			Value:    stela.EncodeValue(ds.Value),
@@ -284,8 +290,9 @@ func (s *Server) DiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (*pb.
 	// Convert stela.Service struct to pb.ServiceResponse
 	return &pb.ServiceMessage{
 		Name:     service.Name,
-		Hostname: service.Target,
-		Address:  service.Address,
+		Hostname: service.Hostname,
+		IPv4:     service.IPv4,
+		IPv6:     service.IPv6,
 		Port:     service.Port,
 		Priority: service.Priority,
 		Value:    stela.EncodeValue(service.Value),
@@ -301,8 +308,9 @@ func (s *Server) DiscoverAll(ctx context.Context, req *pb.DiscoverAllRequest) (*
 	for _, ds := range services {
 		sr := &pb.ServiceMessage{
 			Name:     ds.Name,
-			Hostname: ds.Target,
-			Address:  ds.Address,
+			Hostname: ds.Hostname,
+			IPv4:     ds.IPv4,
+			IPv6:     ds.IPv6,
 			Port:     ds.Port,
 			Priority: ds.Priority,
 			Value:    stela.EncodeValue(ds.Value),

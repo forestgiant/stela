@@ -1,10 +1,11 @@
 // The test currently require two stela instances to be running
 // One at the default setting > stela
-// Another on port 9001 > stela -port 9001
+// Another on port 31001 > stela -port 31001
 
 package api
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -16,6 +17,8 @@ import (
 )
 
 const timeout = 500 * time.Millisecond
+
+var stelaSecondPort = "31100"
 
 // func TestMain(m *testing.M) {
 // 	kill, err := startStelaInstance(stela.DefaultStelaPort, stela.DefaultMulticastPort)
@@ -31,22 +34,24 @@ const timeout = 500 * time.Millisecond
 
 func TestRegisterAndDiscover(t *testing.T) {
 	// Create a second stela instance
-	// kill, err := startStelaInstance(9001, stela.DefaultMulticastPort)
+	// kill, err := startStelaInstance(stelaSecondPort, stela.DefaultMulticastPort)
 	// if err != nil {
 	// 	t.Fatal(err)
 	// }
 	// defer kill()
+
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
 
 	serviceName := "apitest.services.fg"
+
 	c, err := NewClient(ctx, stela.DefaultStelaAddress, "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
 
-	c2, err := NewClient(ctx, "127.0.0.1:9001", "../testdata/ca.pem")
+	c2, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%s", stelaSecondPort), "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,28 +60,28 @@ func TestRegisterAndDiscover(t *testing.T) {
 	// Register services with c2
 	c2Services := []*stela.Service{
 		&stela.Service{
-			Name:    serviceName,
-			Target:  "jlu.macbook",
-			Address: "127.0.0.1",
-			Port:    9001,
+			Name:     serviceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     9001,
 		},
 		&stela.Service{
-			Name:    "discoverall.services.fg",
-			Target:  "jlu.macbook",
-			Address: "127.0.0.1",
-			Port:    9001,
+			Name:     "discoverall.services.fg",
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     9001,
 		},
 		&stela.Service{
-			Name:    stela.ServiceName,
-			Target:  "jlu.macbook",
-			Address: "127.0.0.1",
-			Port:    10001,
+			Name:     stela.ServiceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     10001,
 		},
 		&stela.Service{
-			Name:    stela.ServiceName,
-			Target:  "jlu.macbook",
-			Address: "127.0.0.1",
-			Port:    10000,
+			Name:     stela.ServiceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     10000,
 		},
 	}
 	for _, s := range c2Services {
@@ -97,29 +102,29 @@ func TestRegisterAndDiscover(t *testing.T) {
 		shouldFail bool
 	}{
 		{&stela.Service{
-			Name:    serviceName,
-			Target:  "jlu.macbook",
-			Address: "127.0.0.1",
-			Port:    9000,
+			Name:     serviceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     9000,
 		}, false},
 		// Don't allow duplicates
 		{&stela.Service{
-			Name:    serviceName,
-			Target:  "jlu.macbook",
-			Address: "127.0.0.1",
-			Port:    9000,
+			Name:     serviceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     9000,
 		}, true},
 		{&stela.Service{
-			Name:    serviceName,
-			Target:  "jlu.macbook",
-			Address: "localhost",
-			Port:    80,
+			Name:     serviceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "localhost",
+			Port:     80,
 		}, false},
 		{&stela.Service{
-			Name:    "",
-			Target:  "",
-			Address: "",
-			Port:    0,
+			Name:     "",
+			Hostname: "",
+			IPv4:     "",
+			Port:     0,
 		}, true},
 	}
 
@@ -180,10 +185,10 @@ func TestRegisterAndDiscover(t *testing.T) {
 	defer cancelRegister()
 	if err := c.RegisterService(registerCtx,
 		&stela.Service{
-			Name:    stela.ServiceName,
-			Target:  "jlu.macbook",
-			Address: "127.0.0.1",
-			Port:    10002,
+			Name:     stela.ServiceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     10002,
 		}); err != nil {
 		t.Fatal(err)
 	}
@@ -211,13 +216,13 @@ func TestConnectSubscribe(t *testing.T) {
 	}
 	defer c.Close()
 
-	c2, err := NewClient(ctx, "127.0.0.1:9001", "../testdata/ca.pem")
+	c2, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%s", stelaSecondPort), "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c2.Close()
 
-	c3, err := NewClient(ctx, "127.0.0.1:9001", "../testdata/ca.pem")
+	c3, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%s", stelaSecondPort), "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,22 +231,22 @@ func TestConnectSubscribe(t *testing.T) {
 	// Test services for c
 	var testServices = []*stela.Service{
 		&stela.Service{
-			Name:    serviceName,
-			Target:  "jlu.macbook",
-			Address: "127.0.0.1",
-			Port:    9000,
+			Name:     serviceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     9000,
 		},
 		&stela.Service{
-			Name:    serviceName,
-			Target:  "jlu.macbook",
-			Address: "127.0.0.2",
-			Port:    65349,
+			Name:     serviceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.2",
+			Port:     65349,
 		},
 		&stela.Service{
-			Name:    serviceName,
-			Target:  "jlu.macbook",
-			Address: "127.0.0.3",
-			Port:    653490,
+			Name:     serviceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.3",
+			Port:     653490,
 		},
 	}
 
@@ -351,11 +356,11 @@ func TestValue(t *testing.T) {
 
 	// Register a service with a value
 	service := &stela.Service{
-		Name:    serviceName,
-		Target:  "jlu.macbook",
-		Address: "127.0.0.1",
-		Port:    9000,
-		Value:   value,
+		Name:     serviceName,
+		Hostname: "jlu.macbook",
+		IPv4:     "127.0.0.1",
+		Port:     9000,
+		Value:    value,
 	}
 	if err := c.RegisterService(ctx, service); err != nil {
 		t.Fatal(err)

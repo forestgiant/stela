@@ -93,8 +93,9 @@ func (c *Client) connect() error {
 				c.mu.RLock()
 				c.callbacks[rs.Name](&stela.Service{
 					Name:     rs.Name,
-					Target:   rs.Hostname,
-					Address:  rs.Address,
+					Hostname: rs.Hostname,
+					IPv4:     rs.IPv4,
+					IPv6:     rs.IPv6,
 					Port:     rs.Port,
 					Priority: rs.Priority,
 					Action:   rs.Action,
@@ -151,15 +152,18 @@ func (c *Client) Unsubscribe(ctx context.Context, serviceName string) error {
 }
 
 func (c *Client) RegisterService(ctx context.Context, s *stela.Service) error {
-	s.Target = c.Hostname
-	s.Address = c.Address
+	s.Hostname = c.Hostname
+	if s.IPv4 == "" {
+		s.IPv4 = c.Address
+	}
 	_, err := c.rpc.Register(ctx,
 		&pb.RegisterRequest{
 			ClientId: c.ID,
 			Service: &pb.ServiceMessage{
 				Name:     s.Name,
-				Hostname: s.Target,
-				Address:  s.Address,
+				Hostname: s.Hostname,
+				IPv4:     s.IPv4,
+				IPv6:     s.IPv6,
 				Port:     s.Port,
 				Priority: s.Priority,
 				Value:    stela.EncodeValue(s.Value),
@@ -173,15 +177,16 @@ func (c *Client) RegisterService(ctx context.Context, s *stela.Service) error {
 }
 
 func (c *Client) DeregisterService(ctx context.Context, s *stela.Service) error {
-	s.Address = c.Address
-	s.Target = c.Hostname
+	// s.IPv4 = c.Address
+	s.Hostname = c.Hostname
 	_, err := c.rpc.Deregister(ctx,
 		&pb.RegisterRequest{
 			ClientId: c.ID,
 			Service: &pb.ServiceMessage{
 				Name:     s.Name,
-				Hostname: s.Target,
-				Address:  s.Address,
+				Hostname: s.Hostname,
+				IPv4:     s.IPv4,
+				IPv6:     s.IPv6,
 				Port:     s.Port,
 				Priority: s.Priority,
 			},
@@ -204,8 +209,9 @@ func (c *Client) Discover(ctx context.Context, serviceName string) ([]*stela.Ser
 	for _, ds := range resp.Services {
 		s := &stela.Service{
 			Name:     ds.Name,
-			Target:   ds.Hostname,
-			Address:  ds.Address,
+			Hostname: ds.Hostname,
+			IPv4:     ds.IPv4,
+			IPv6:     ds.IPv6,
 			Port:     ds.Port,
 			Priority: ds.Priority,
 			Value:    stela.DecodeValue(ds.Value),
@@ -225,8 +231,9 @@ func (c *Client) DiscoverOne(ctx context.Context, serviceName string) (*stela.Se
 	// Convert response to stela services
 	return &stela.Service{
 		Name:     resp.Name,
-		Target:   resp.Hostname,
-		Address:  resp.Address,
+		Hostname: resp.Hostname,
+		IPv4:     resp.IPv4,
+		IPv6:     resp.IPv6,
 		Port:     resp.Port,
 		Priority: resp.Priority,
 		Value:    stela.DecodeValue(resp.Value),
@@ -244,8 +251,9 @@ func (c *Client) DiscoverAll(ctx context.Context) ([]*stela.Service, error) {
 	for _, ds := range resp.Services {
 		s := &stela.Service{
 			Name:     ds.Name,
-			Target:   ds.Hostname,
-			Address:  ds.Address,
+			Hostname: ds.Hostname,
+			IPv4:     ds.IPv4,
+			IPv6:     ds.IPv6,
 			Port:     ds.Port,
 			Priority: ds.Priority,
 			Value:    stela.DecodeValue(ds.Value),

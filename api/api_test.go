@@ -5,7 +5,11 @@
 package api
 
 import (
+	"bufio"
 	"fmt"
+	"log"
+	"os"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -16,42 +20,53 @@ import (
 	"gitlab.fg/go/stela"
 )
 
-const timeout = 500 * time.Millisecond
+const timeout = 1000 * time.Millisecond
 
-var stelaSecondPort = "31100"
+var stelaTestPort = 31100
+var stelaTestPort2 = 31200
+var testMulticastPort = 31153
 
-// func TestMain(m *testing.M) {
-// 	kill, err := startStelaInstance(stela.DefaultStelaPort, stela.DefaultMulticastPort)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
+func TestMain(m *testing.M) {
+	os.Exit(run(m))
+}
 
-// 	t := m.Run()
+func run(m *testing.M) (exitCode int) {
+	kill, err := startStelaInstance(stelaTestPort, testMulticastPort)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer kill()
 
-// 	kill()
-// 	os.Exit(t)
-// }
+	// Create a second stela instance
+	kill2, err := startStelaInstance(stelaTestPort2, testMulticastPort)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer kill2()
+
+	// Give the instances time to start
+	time.Sleep(time.Second * 2)
+
+	// Run test
+	t := m.Run()
+
+	return t
+}
 
 func TestRegisterAndDiscover(t *testing.T) {
-	// Create a second stela instance
-	// kill, err := startStelaInstance(stelaSecondPort, stela.DefaultMulticastPort)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// defer kill()
-
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
 
 	serviceName := "apitest.services.fg"
 
-	c, err := NewClient(ctx, stela.DefaultStelaAddress, "../testdata/ca.pem")
+	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
 
-	c2, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%s", stelaSecondPort), "../testdata/ca.pem")
+	c2, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2), "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,9 +157,7 @@ func TestRegisterAndDiscover(t *testing.T) {
 	}
 
 	// Now see if we can discover them
-	discoverCtx, cancelDiscover := context.WithTimeout(context.Background(), timeout)
-	defer cancelDiscover()
-	services, err := c.Discover(discoverCtx, serviceName)
+	services, err := c.Discover(context.Background(), serviceName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,9 +170,7 @@ func TestRegisterAndDiscover(t *testing.T) {
 	equalServices(t, services, expectedServices)
 
 	// DiscoverAll should return expected plus 1
-	discoverAllCtx, cancelDiscoverAll := context.WithTimeout(context.Background(), timeout)
-	defer cancelDiscoverAll()
-	da, err := c.DiscoverAll(discoverAllCtx)
+	da, err := c.DiscoverAll(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,9 +181,7 @@ func TestRegisterAndDiscover(t *testing.T) {
 	}
 
 	// DiscoverOne with c2
-	discoverOneCtx, cancelDiscoverOne := context.WithTimeout(context.Background(), timeout)
-	defer cancelDiscoverOne()
-	s, err := c2.DiscoverOne(discoverOneCtx, serviceName)
+	s, err := c2.DiscoverOne(context.Background(), serviceName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,15 +202,94 @@ func TestRegisterAndDiscover(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Discover all stela instances
-	discoverCtx, cancelDiscover = context.WithTimeout(context.Background(), timeout)
-	defer cancelDiscover()
-	stelas, err := c2.Discover(discoverCtx, stela.ServiceName)
+	// Discover all stela instances. There should be 2 registered with c2, 1 registered with c and 2 running instances
+	stelas, err := c.Discover(context.Background(), stela.ServiceName)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(stelas) != 5 {
-		t.Fatal("stela discovery failed", stelas)
+		t.Fatalf("stela discovery failed. Got: %d, Wanted %d", len(stelas), 5)
+	}
+
+	// Discover all stela instances on second client. There should be 2 registered with c2, 1 registered with c and 2 running instances
+	stelas, err = c2.Discover(context.Background(), stela.ServiceName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stelas) != 5 {
+		t.Fatalf("stela discovery failed. Got: %d, Wanted %d", len(stelas), 5)
+	}
+}
+
+func TestDeregister(t *testing.T) {
+	serviceName := "deregister.services.fg"
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+	defer cancelFunc()
+	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), "../testdata/ca.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	// Register services with c2
+	services := []*stela.Service{
+		&stela.Service{
+			Name:     serviceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     9001,
+		},
+		&stela.Service{
+			Name:     serviceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     9002,
+		},
+		&stela.Service{
+			Name:     serviceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     10001,
+		},
+		&stela.Service{
+			Name:     serviceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     10000,
+		},
+	}
+
+	// Register all the services
+	for _, s := range services {
+		if err := c.RegisterService(context.Background(), s); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Discover to verify the were registered
+	found, err := c.Discover(context.Background(), serviceName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(found) != len(services) {
+		t.Fatalf("discovery failed. Got: %d, Wanted %d", len(found), len(services))
+	}
+
+	// Deregister all services
+	for _, s := range services {
+		if err := c.DeregisterService(context.Background(), s); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Verify the services were removed
+	found2, err := c.Discover(context.Background(), serviceName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(found2) != 0 {
+		t.Fatalf("discovery failed. Got: %d, Wanted %d", len(found2), 0)
 	}
 }
 
@@ -210,19 +298,19 @@ func TestConnectSubscribe(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
 	// Connect to both instances
-	c, err := NewClient(ctx, stela.DefaultStelaAddress, "../testdata/ca.pem")
+	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
 
-	c2, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%s", stelaSecondPort), "../testdata/ca.pem")
+	c2, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2), "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c2.Close()
 
-	c3, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%s", stelaSecondPort), "../testdata/ca.pem")
+	c3, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2), "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -335,7 +423,7 @@ func TestValue(t *testing.T) {
 	defer cancelFunc()
 
 	serviceName := "valuetest.services.fg"
-	c, err := NewClient(ctx, stela.DefaultStelaAddress, "../testdata/ca.pem")
+	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), "../testdata/ca.pem")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -420,19 +508,48 @@ func equalServices(t *testing.T, s1, s2 []*stela.Service) {
 	}
 }
 
-// func startStelaInstance(stelaPort, multicastPort int) (kill func(), err error) {
-// 	// Run a stela instance
-// 	cmd := exec.Command("stela", "-port", fmt.Sprint(stelaPort), "-multicast", fmt.Sprint(multicastPort))
-// 	if err := cmd.Start(); err != nil {
-// 		return nil, err
-// 	}
+func startStelaInstance(stelaPort, multicastPort int) (kill func(), err error) {
+	// Run a stela instance
+	cmd := exec.Command("stela", "-port", fmt.Sprint(stelaPort), "-multicast", fmt.Sprint(multicastPort))
 
-// 	// Give the instance time to start
-// 	time.Sleep(time.Millisecond * 100)
+	// Print std out,err
+	killPipes := createPipeScanners(cmd, fmt.Sprintf("stela port: %d", stelaPort))
 
-// 	return func() {
-// 		if err := cmd.Process.Kill(); err != nil {
-// 			fmt.Println("failed to kill: ", err)
-// 		}
-// 	}, nil
-// }
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+
+	return func() {
+		if err := cmd.Process.Kill(); err != nil {
+			fmt.Println("failed to kill: ", err)
+		}
+		killPipes()
+	}, nil
+}
+
+func createPipeScanners(cmd *exec.Cmd, prefix string) (kill func()) {
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
+
+	// Created scanners for in, out, and err pipes
+	outScanner := bufio.NewScanner(stdout)
+	errScanner := bufio.NewScanner(stderr)
+
+	// Scan for text
+	go func() {
+		for errScanner.Scan() {
+			fmt.Printf("[%s] %s\n", prefix, errScanner.Text())
+		}
+	}()
+
+	go func() {
+		for outScanner.Scan() {
+			fmt.Printf("[%s] %s\n", prefix, outScanner.Text())
+		}
+	}()
+
+	return func() {
+		stdout.Close()
+		stderr.Close()
+	}
+}

@@ -58,12 +58,10 @@ type Service struct {
 	mu           *sync.Mutex // protects registerCh, deregisterCh, stopped
 }
 
-// init service chans
-// func (s *Service) init() {
-// 	if s.mu == nil {
-// 		s.mu = &sync.Mutex{}
-// 	}
-// }
+// Stringer
+func (s Service) String() string {
+	return fmt.Sprintf("Name: %s, Hostname: %s, IPv4: %s, IPv6: %s, Port: %d, Action: %d", s.Name, s.Hostname, s.IPv4, s.IPv6, s.Port, s.Action)
+}
 
 // Equal tests if a Service is the same
 func (s Service) Equal(testService *Service) bool {

@@ -513,7 +513,7 @@ func startStelaInstance(stelaPort, multicastPort int) (kill func(), err error) {
 	cmd := exec.Command("stela", "-port", fmt.Sprint(stelaPort), "-multicast", fmt.Sprint(multicastPort))
 
 	// Print std out,err
-	killPipes := createPipeScanners(cmd, fmt.Sprintf("stela port: %d", stelaPort))
+	createPipeScanners(cmd, fmt.Sprintf("stela port: %d", stelaPort))
 
 	if err := cmd.Start(); err != nil {
 		return nil, err
@@ -523,11 +523,10 @@ func startStelaInstance(stelaPort, multicastPort int) (kill func(), err error) {
 		if err := cmd.Process.Kill(); err != nil {
 			fmt.Println("failed to kill: ", err)
 		}
-		killPipes()
 	}, nil
 }
 
-func createPipeScanners(cmd *exec.Cmd, prefix string) (kill func()) {
+func createPipeScanners(cmd *exec.Cmd, prefix string) {
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 
@@ -547,9 +546,4 @@ func createPipeScanners(cmd *exec.Cmd, prefix string) (kill func()) {
 			fmt.Printf("[%s] %s\n", prefix, outScanner.Text())
 		}
 	}()
-
-	return func() {
-		stdout.Close()
-		stderr.Close()
-	}
 }

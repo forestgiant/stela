@@ -42,9 +42,9 @@ func main() {
 	stelaClient.Subscribe(subscribeCtx, serviceName, func(s *stela.Service) {
 		switch s.Action {
 		case stela.RegisterAction:
-			fmt.Printf("New member registered: %s:%d. With message: %v \n", s.Address, s.Port, s.Value)
+			fmt.Printf("New member registered: %s:%d. With message: %v \n", s.IPv4, s.Port, s.Value)
 		case stela.DeregisterAction:
-			fmt.Printf("New member deregistered: %s:%d. With message: %v \n", s.Address, s.Port, s.Value)
+			fmt.Printf("New member deregistered: %s:%d. With message: %v \n", s.IPv4, s.Port, s.Value)
 		}
 
 		// Print total members

@@ -33,7 +33,7 @@ func (w *watcher) valid() bool {
 	if w.service.Name == "" {
 		return false
 	}
-	if w.service.Address == "" {
+	if w.service.IPv4 == "" {
 		return false
 	}
 	return true
@@ -63,7 +63,7 @@ func (w *watcher) updateRegistry() bool {
 	defer cancelRegister()
 
 	// Verify service is running
-	conn, err := net.Dial("tcp", net.JoinHostPort(w.service.Address, strconv.Itoa(int(w.service.Port))))
+	conn, err := net.Dial("tcp", net.JoinHostPort(w.service.IPv4, strconv.Itoa(int(w.service.Port))))
 	// If there was an error that means the connection didn't happen and we need to deregister the service
 	if err != nil {
 		w.stelaClient.DeregisterService(registerCtx, w.service)
@@ -77,7 +77,7 @@ func (w *watcher) updateRegistry() bool {
 }
 
 func (w watcher) String() string {
-	return fmt.Sprintf("Name: %s, Address: %s, Port: %d, Interval: %v", w.service.Name, w.service.Address, w.service.Port, w.interval)
+	return fmt.Sprintf("Name: %s, Address: %s, Port: %d, Interval: %v", w.service.Name, w.service.IPv4, w.service.Port, w.interval)
 }
 
 func (w *watcher) stop() {

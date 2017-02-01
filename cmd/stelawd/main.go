@@ -140,10 +140,10 @@ func createWatchers(stelaClient *api.Client, config io.Reader) ([]*watcher, erro
 
 		w := &watcher{
 			service: &stela.Service{
-				Name:    serviceName,
-				Address: ip,
-				Port:    int32(port),
-				Value:   value,
+				Name:  serviceName,
+				IPv4:  ip,
+				Port:  int32(port),
+				Value: value,
 			},
 			interval:    time.Millisecond * time.Duration(interval),
 			stelaClient: stelaClient,

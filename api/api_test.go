@@ -20,11 +20,13 @@ import (
 	"gitlab.fg/go/stela"
 )
 
-const timeout = 1000 * time.Millisecond
-
-var stelaTestPort = 31100
-var stelaTestPort2 = 31200
-var testMulticastPort = 31153
+const (
+	timeout           = 1000 * time.Millisecond
+	stelaTestPort     = 31100
+	stelaTestPort2    = 31200
+	testMulticastPort = 31153
+	caPem             = "../testdata/ca.pem"
+)
 
 func TestMain(m *testing.M) {
 	os.Exit(run(m))
@@ -60,13 +62,13 @@ func TestRegisterAndDiscover(t *testing.T) {
 
 	serviceName := "apitest.services.fg"
 
-	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), "../testdata/ca.pem")
+	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), caPem)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
 
-	c2, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2), "../testdata/ca.pem")
+	c2, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2), caPem)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,13 +228,12 @@ func TestDeregister(t *testing.T) {
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
-	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), "../testdata/ca.pem")
+	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), caPem)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
 
-	// Register services with c2
 	services := []*stela.Service{
 		&stela.Service{
 			Name:     serviceName,
@@ -293,24 +294,79 @@ func TestDeregister(t *testing.T) {
 	}
 }
 
-func TestConnectSubscribe(t *testing.T) {
-	serviceName := "testSubscribe.services.fg"
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func TestMaxValue(t *testing.T) {
+	serviceName := "maxvalue.services.fg"
 
-	// Connect to both instances
-	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), "../testdata/ca.pem")
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+	defer cancelFunc()
+	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), caPem)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
 
-	c2, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2), "../testdata/ca.pem")
+	tests :=
+		[]struct {
+			service    *stela.Service
+			shouldFail bool
+		}{
+			{&stela.Service{
+				Name:     serviceName,
+				Hostname: "jlu.macbook",
+				IPv4:     "127.0.0.1",
+				Port:     9001,
+				Value:    "Value string",
+			}, false},
+			{&stela.Service{
+				Name:     serviceName,
+				Hostname: "jlu.macbook",
+				IPv4:     "127.0.0.1",
+				Port:     3002,
+				Value:    &stela.Service{},
+			}, false},
+			{&stela.Service{
+				Name:     serviceName,
+				Hostname: "jlu.macbook",
+				IPv4:     "127.0.0.1",
+				Port:     10001,
+				Value:    make([]byte, 208), // Need to account for the byte slice being converted to a gob
+			}, false},
+			{&stela.Service{
+				Name:     serviceName,
+				Hostname: "jlu.macbook",
+				IPv4:     "127.0.0.1",
+				Port:     9002,
+				Value:    make([]byte, 209),
+			}, true},
+		}
+
+	// Register services to test value
+	for i, test := range tests {
+		if err := c.RegisterService(context.Background(), test.service); test.shouldFail != (err != nil) {
+			t.Fatal(i, test, err)
+		}
+	}
+
+}
+
+func TestConnectSubscribe(t *testing.T) {
+	serviceName := "testSubscribe.services.fg"
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
+	// Connect to both instances
+	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), caPem)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	c2, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2), caPem)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c2.Close()
 
-	c3, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2), "../testdata/ca.pem")
+	c3, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2), caPem)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -423,7 +479,7 @@ func TestValue(t *testing.T) {
 	defer cancelFunc()
 
 	serviceName := "valuetest.services.fg"
-	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), "../testdata/ca.pem")
+	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), caPem)
 	if err != nil {
 		t.Fatal(err)
 	}

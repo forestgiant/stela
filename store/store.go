@@ -2,7 +2,7 @@ package store
 
 import "gitlab.fg/go/stela"
 
-// Store represents a key value service storage backed by raft
+// Store represents a key value service
 type Store interface {
 	Register(s *stela.Service) error
 	Deregister(s *stela.Service) *stela.Service

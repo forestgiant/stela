@@ -119,6 +119,13 @@ func (s *Server) Unsubscribe(ctx context.Context, req *pb.SubscribeRequest) (*pb
 
 // Register a service to a client
 func (s *Server) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
+
+	// Verify the Value isn't more than 256 bytes
+	l := len(req.Service.Value)
+	if l > stela.DefaultMaxValueBytes {
+		return nil, fmt.Errorf("Value is greater than %d bytes. Received: %d", stela.DefaultMaxValueBytes, l)
+	}
+
 	// Look up client that sent the request
 	c, err := s.Store.Client(req.ClientId)
 	if err != nil {

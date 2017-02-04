@@ -30,6 +30,9 @@ const (
 
 	// ServiceName is how stela instances are registered as services
 	ServiceName = "stela.services.fg"
+
+	// DefaultMaxValueBytes only allows the Value byte slice to be 256 bytes
+	DefaultMaxValueBytes = 256
 )
 
 // Actions for Service

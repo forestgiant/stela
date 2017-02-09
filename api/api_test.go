@@ -158,14 +158,15 @@ func TestRegisterAndDiscover(t *testing.T) {
 		}
 	}
 
-	// Now see if we can discover them
+	// Now see if we can discover apitest.services.fg service
 	services, err := c.Discover(context.Background(), serviceName)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// There should only be three registered
 	if len(services) != 3 {
-		t.Fatal("Discover failed", services, expectedServices)
+		t.Fatalf("Discover failed. \n Received: %s \n Expected: %s \n", services, expectedServices)
 	}
 
 	// Compare the discovered services

@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -438,11 +439,15 @@ func (s *Server) PeerDiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (
 	wg.Wait()
 
 	// Give back a random result
-	var index int
 	if len(results) < 1 {
-		index = 1
+		return nil, errors.New("DiscoverOne returned no results")
+	}
+
+	var index int
+	if len(results) > 1 {
+		index = rand.Intn(len(results) - 1)
 	} else {
-		index = rand.Intn(len(results))
+		index = 0
 	}
 
 	return results[index], nil

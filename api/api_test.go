@@ -295,6 +295,33 @@ func TestDeregister(t *testing.T) {
 	}
 }
 
+func TestDiscoverOneWithNothingRegistered(t *testing.T) {
+	serviceName := "discoverone.services.fg"
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+	defer cancelFunc()
+	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), caPem)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	// Make sure no services for serviceName are registered
+	services, err := c.Discover(context.Background(), serviceName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(services) > 0 {
+		t.Fatalf("no services with the name: %s, should be registered", serviceName)
+	}
+
+	_, err = c.DiscoverOne(context.Background(), serviceName)
+	if err == nil {
+		t.Fatal("DiscoverOne should have errored.")
+	}
+
+}
+
 func TestMaxValue(t *testing.T) {
 	serviceName := "maxvalue.services.fg"
 

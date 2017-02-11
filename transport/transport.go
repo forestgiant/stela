@@ -201,7 +201,7 @@ func (s *Server) peerNotify(service *stela.Service) {
 			go func() {
 				defer close(waitCh)
 
-				address := p.Values["Address"]
+				address := string(p.Payload)
 				address, err := convertToLocalIP(address)
 				if err != nil {
 					return
@@ -348,7 +348,7 @@ func (s *Server) PeerDiscover(ctx context.Context, req *pb.DiscoverRequest) (*pb
 			go func() {
 				defer close(waitCh)
 
-				address := p.Values["Address"]
+				address := string(p.Payload)
 				address, err := convertToLocalIP(address)
 				if err != nil {
 					return
@@ -404,7 +404,7 @@ func (s *Server) PeerDiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (
 
 			go func() {
 				defer close(waitCh)
-				address := p.Values["Address"]
+				address := string(p.Payload)
 				address, err := convertToLocalIP(address)
 				if err != nil {
 					return
@@ -471,7 +471,7 @@ func (s *Server) PeerDiscoverAll(ctx context.Context, req *pb.DiscoverAllRequest
 
 			go func() {
 				defer close(waitCh)
-				address := p.Values["Address"]
+				address := string(p.Payload)
 				address, err := convertToLocalIP(address)
 				if err != nil {
 					return

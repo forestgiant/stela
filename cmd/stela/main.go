@@ -100,7 +100,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	n := &node.Node{Values: map[string]string{"Address": networkAddr}, SendInterval: 2 * time.Second}
+	n := &node.Node{Payload: []byte(networkAddr), SendInterval: 2 * time.Second}
 	if err := n.Multicast(ctx, multicastAddr); err != nil {
 		logger.Error("error", err.Error())
 		os.Exit(1)

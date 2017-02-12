@@ -9,3 +9,6 @@ minio.service.fg, 127.0.0.1:9001, value string 2, 2000
 
 # Service 3
 minio.service.fg, 127.0.0.1:9002, value string 3, 3000
+
+# Service 4
+minio.service.fg, :9000, value string 3, 3000

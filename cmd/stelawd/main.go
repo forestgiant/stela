@@ -19,6 +19,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/forestgiant/netutil"
 	"gitlab.fg/go/stela"
 	"gitlab.fg/go/stela/api"
 )
@@ -33,16 +34,18 @@ func main() {
 
 	// Check for command line configuration flags
 	var (
-		watcherListUsage = "Path to the list of services to watch."
-		watcherListPtr   = flag.String("watchlist", "watch.list", watcherListUsage)
-		caFileUsage      = "Path to the ca file for gRPC client to connect with."
-		caFilePtr        = flag.String("cafile", "../certs/ca.pem", caFileUsage)
+		watcherListUsage  = "Path to the list of services to watch."
+		watcherListPtr    = flag.String("watchlist", "watch.list", watcherListUsage)
+		caFileUsage       = "Path to the ca file for gRPC client to connect with."
+		caFilePtr         = flag.String("cafile", "../certs/ca.pem", caFileUsage)
+		stelaAddressUsage = "Address of stela instance to connect to."
+		stelaAddress      = flag.String("stelaAddr", stela.DefaultStelaAddress, stelaAddressUsage)
 	)
 	flag.Parse()
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancelFunc()
-	stelaClient, err := api.NewClient(ctx, stela.DefaultStelaAddress, *caFilePtr)
+	stelaClient, err := api.NewClient(ctx, *stelaAddress, *caFilePtr)
 	if err != nil {
 		logger.Error("Failed to create stela client. Make sure there is a stela instance running", "error", err.Error())
 		os.Exit(1)
@@ -120,6 +123,12 @@ func createWatchers(stelaClient *api.Client, config io.Reader) ([]*watcher, erro
 		if err != nil {
 			return nil, fmt.Errorf("Could not process address %v for: %v", record[1], record)
 		}
+
+		// If the ip is blank use the localhost ipv4 address
+		if ip == "" {
+			ip = netutil.LocalIPv4().String()
+		}
+
 		port, err := strconv.Atoi(p)
 		if err != nil {
 			return nil, fmt.Errorf("Could not process port: %v for: %v", p, record)

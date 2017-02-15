@@ -295,6 +295,70 @@ func TestDeregister(t *testing.T) {
 	}
 }
 
+func TestDiscoverRegex(t *testing.T) {
+	serviceName := "regex.services.fg"
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+	defer cancelFunc()
+	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), caPem)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	services := []*stela.Service{
+		&stela.Service{
+			Name:     serviceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     9001,
+		},
+		&stela.Service{
+			Name:     serviceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     9002,
+		},
+		&stela.Service{
+			Name:     serviceName,
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     10001,
+		},
+		&stela.Service{
+			Name:     "regTest2.services.fg",
+			Hostname: "jlu.macbook",
+			IPv4:     "127.0.0.1",
+			Port:     10000,
+		},
+	}
+
+	// Register the services
+	for i, s := range services {
+		if err := c.RegisterService(context.Background(), s); err != nil {
+			t.Fatal(i, s, err)
+		}
+	}
+
+	// Now try to discover with a regex
+	found, err := c.Discover(context.Background(), "reg.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(found) != len(services) {
+		t.Fatal("Did not discover services with regex", found)
+	}
+
+	// Now DiscoverOne regTest
+	service, err := c.DiscoverOne(context.Background(), "regTest*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if service.Name != "regTest2.services.fg" {
+		t.Fatal("DiscoverOne regex failed")
+	}
+}
+
 func TestDiscoverOneWithNothingRegistered(t *testing.T) {
 	serviceName := "discoverone.services.fg"
 

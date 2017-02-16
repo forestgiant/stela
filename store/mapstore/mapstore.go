@@ -6,7 +6,6 @@ import (
 	"net"
 	"regexp"
 	"sort"
-	"strings"
 	"sync"
 
 	"github.com/hashicorp/raft"
@@ -159,34 +158,8 @@ func (m *MapStore) Unsubscribe(serviceName string, c *stela.Client) error {
 }
 
 // Discover finds all services registered under a serviceName
-// serviceName parameter can be a regular expression. If you use any
-// of these characters `(|)^$[*{\` Discover will perform a pattern match
-// https://golang.org/pkg/regexp/#MatchString
 func (m *MapStore) Discover(serviceName string) ([]*stela.Service, error) {
-	results := []*stela.Service{}
-
-	// First test if serviceName contains any regex characters
-	regex := false
-	if strings.ContainsAny(serviceName, `(|)^$[*{\`) {
-		regex = true
-	}
-
-	// If doesn't do a direct key lookup
-	if !regex {
-		results = m.services[serviceName]
-	} else {
-		// Looks like the string may contain a regex so let's match
-		r, err := regexp.Compile(serviceName)
-		if err != nil {
-			return nil, fmt.Errorf("No services discovered with the service name: %s", serviceName)
-		}
-		for k, v := range m.services {
-			if r.MatchString(k) {
-				results = append(results, v...)
-			}
-		}
-	}
-
+	results := m.services[serviceName]
 	if len(results) == 0 {
 		return nil, fmt.Errorf("No services discovered with the service name: %s", serviceName)
 	}
@@ -194,10 +167,30 @@ func (m *MapStore) Discover(serviceName string) ([]*stela.Service, error) {
 	return results, nil
 }
 
-// DiscoverOne returns only one of the services registered under a serviceName
-// serviceName parameter can be a regular expression. If you use any
-// of these characters `(|)^$[*{\` Discover will perform a pattern match
+// DiscoverRegex finds all services registered from a regular expression
 // https://golang.org/pkg/regexp/#MatchString
+func (m *MapStore) DiscoverRegex(reg string) ([]*stela.Service, error) {
+	results := []*stela.Service{}
+
+	// Looks like the string may contain a regex so let's match
+	r, err := regexp.Compile(reg)
+	if err != nil {
+		return nil, fmt.Errorf("No services discovered with the regex: %s", reg)
+	}
+	for k, v := range m.services {
+		if r.MatchString(k) {
+			results = append(results, v...)
+		}
+	}
+
+	if len(results) == 0 {
+		return nil, fmt.Errorf("No services discovered with the regex: %s", reg)
+	}
+
+	return results, nil
+}
+
+// DiscoverOne returns only one of the services registered under a serviceName
 func (m *MapStore) DiscoverOne(serviceName string) (*stela.Service, error) {
 	services, err := m.Discover(serviceName)
 	if err != nil {

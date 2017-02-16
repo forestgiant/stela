@@ -12,11 +12,13 @@ service Stela {
     rpc Deregister(RegisterRequest) returns (RegisterResponse) {}
     rpc NotifyClients(ServiceMessage) returns (NotifyResponse){}
     rpc Discover(DiscoverRequest) returns (DiscoverResponse) {}
+    rpc DiscoverRegex(DiscoverRequest) returns (DiscoverResponse) {}
     rpc DiscoverOne(DiscoverRequest) returns (ServiceMessage) {}
     rpc DiscoverAll(DiscoverAllRequest) returns (DiscoverResponse) {}
     
     // Peer related RPC is used to request all peer members
     rpc PeerDiscover(DiscoverRequest) returns (DiscoverResponse) {}
+    rpc PeerDiscoverRegex(DiscoverRequest) returns (DiscoverResponse) {}
     rpc PeerDiscoverOne(DiscoverRequest) returns (ServiceMessage) {}
     rpc PeerDiscoverAll(DiscoverAllRequest) returns (DiscoverResponse) {}
 }

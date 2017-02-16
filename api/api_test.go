@@ -340,22 +340,13 @@ func TestDiscoverRegex(t *testing.T) {
 	}
 
 	// Now try to discover with a regex
-	found, err := c.Discover(context.Background(), "reg.*")
+	found, err := c.DiscoverRegex(context.Background(), "reg.*")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if len(found) != len(services) {
 		t.Fatal("Did not discover services with regex", found)
-	}
-
-	// Now DiscoverOne regTest
-	service, err := c.DiscoverOne(context.Background(), "regTest*")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if service.Name != "regTest2.services.fg" {
-		t.Fatal("DiscoverOne regex failed")
 	}
 }
 

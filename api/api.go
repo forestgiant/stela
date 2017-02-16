@@ -222,6 +222,30 @@ func (c *Client) Discover(ctx context.Context, serviceName string) ([]*stela.Ser
 	return services, nil
 }
 
+func (c *Client) DiscoverRegex(ctx context.Context, reg string) ([]*stela.Service, error) {
+	resp, err := c.rpc.PeerDiscoverRegex(ctx, &pb.DiscoverRequest{ServiceName: reg})
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert response to stela services
+	var services []*stela.Service
+	for _, ds := range resp.Services {
+		s := &stela.Service{
+			Name:     ds.Name,
+			Hostname: ds.Hostname,
+			IPv4:     ds.IPv4,
+			IPv6:     ds.IPv6,
+			Port:     ds.Port,
+			Priority: ds.Priority,
+			Value:    stela.DecodeValue(ds.Value),
+		}
+		services = append(services, s)
+	}
+
+	return services, nil
+}
+
 func (c *Client) DiscoverOne(ctx context.Context, serviceName string) (*stela.Service, error) {
 	resp, err := c.rpc.PeerDiscoverOne(ctx, &pb.DiscoverRequest{ServiceName: serviceName})
 	if err != nil {

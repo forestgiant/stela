@@ -288,6 +288,31 @@ func (s *Server) Discover(ctx context.Context, req *pb.DiscoverRequest) (*pb.Dis
 	return &pb.DiscoverResponse{Services: srs}, nil
 }
 
+// DiscoverRegex all services registered under a service name. Ex. "test.services.fg"
+func (s *Server) DiscoverRegex(ctx context.Context, req *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
+	services, err := s.Store.DiscoverRegex(req.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert stela.Service struct to pb.ServiceMessage
+	var srs []*pb.ServiceMessage
+	for _, ds := range services {
+		sr := &pb.ServiceMessage{
+			Name:     ds.Name,
+			Hostname: ds.Hostname,
+			IPv4:     ds.IPv4,
+			IPv6:     ds.IPv6,
+			Port:     ds.Port,
+			Priority: ds.Priority,
+			Value:    stela.EncodeValue(ds.Value),
+		}
+		srs = append(srs, sr)
+	}
+
+	return &pb.DiscoverResponse{Services: srs}, nil
+}
+
 // DiscoverOne service registered under a service name.
 func (s *Server) DiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (*pb.ServiceMessage, error) {
 	service, err := s.Store.DiscoverOne(req.ServiceName)
@@ -362,6 +387,62 @@ func (s *Server) PeerDiscover(ctx context.Context, req *pb.DiscoverRequest) (*pb
 				defer conn.Close()
 				c := pb.NewStelaClient(conn)
 				resp, err := c.Discover(ctx, req)
+				if err != nil {
+					return
+				}
+
+				mu.Lock()
+				defer mu.Unlock()
+				results = append(results, resp.Services...)
+			}()
+
+			// Block until the context times out or the client is notified
+			select {
+			case <-waitCh:
+				return
+			case <-ctx.Done():
+				return
+			}
+		}(p)
+	}
+	wg.Wait()
+
+	return &pb.DiscoverResponse{Services: results}, nil
+}
+
+// PeerDiscoverRegex all services registered under a service name. Ex. "test.services.fg"
+func (s *Server) PeerDiscoverRegex(ctx context.Context, req *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
+	wg := &sync.WaitGroup{}
+	wg.Add(len(s.peers))
+
+	var results []*pb.ServiceMessage
+	var mu sync.Mutex
+	for _, p := range s.peers {
+		go func(p *node.Node) {
+			defer wg.Done()
+
+			// Create context with timeout
+			ctx, cancelFunc := context.WithTimeout(ctx, s.Timeout)
+			defer cancelFunc()
+			waitCh := make(chan struct{})
+
+			go func() {
+				defer close(waitCh)
+
+				address := string(p.Payload)
+				address, err := convertToLocalIP(address)
+				if err != nil {
+					return
+				}
+
+				// Dial the server
+				conn, err := grpc.Dial(address, gRPCOptions()...)
+				if err != nil {
+					return
+				}
+				defer conn.Close()
+				c := pb.NewStelaClient(conn)
+				resp, err := c.DiscoverRegex(ctx, req)
 				if err != nil {
 					return
 				}

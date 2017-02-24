@@ -118,6 +118,13 @@ func (m *MapStore) NotifyClients(s *stela.Service) {
 
 // Subscribe allows a stela.Client to subscribe to a specific serviceName
 func (m *MapStore) Subscribe(serviceName string, c *stela.Client) error {
+	if serviceName == "" {
+		return errors.New("Unable to subscribe to empty serviceName")
+	}
+	if c == nil {
+		return errors.New("Client must not be nil")
+	}
+
 	m.init()
 
 	// Add client to list of subscribers

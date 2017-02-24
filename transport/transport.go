@@ -99,7 +99,10 @@ func (s *Server) Subscribe(ctx context.Context, req *pb.SubscribeRequest) (*pb.S
 	}
 
 	// Subscribe the client to the serviceName
-	s.Store.Subscribe(req.ServiceName, c)
+	err = s.Store.Subscribe(req.ServiceName, c)
+	if err != nil {
+		return nil, err
+	}
 
 	return &pb.SubscribeResponse{}, nil
 }
@@ -113,7 +116,10 @@ func (s *Server) Unsubscribe(ctx context.Context, req *pb.SubscribeRequest) (*pb
 	}
 
 	// Subscribe the client to the serviceName
-	s.Store.Unsubscribe(req.ServiceName, c)
+	err = s.Store.Unsubscribe(req.ServiceName, c)
+	if err != nil {
+		return nil, err
+	}
 
 	return &pb.SubscribeResponse{}, nil
 }

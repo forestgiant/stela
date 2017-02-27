@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 )
 
+// Client struct represents a connection client connection to a stela instance
 type Client struct {
 	stela.Client
 
@@ -24,6 +25,7 @@ type Client struct {
 	callbacks map[string]func(s *stela.Service)
 }
 
+// NewClient returns a *Client struct
 func NewClient(ctx context.Context, stelaAddress string, caFile string) (*Client, error) {
 	c := &Client{}
 	host, err := os.Hostname()
@@ -109,6 +111,7 @@ func (c *Client) connect() error {
 	return nil
 }
 
+// Subscribe stores a callback to the service name and notifies the stela instance to notify your client on changes.
 func (c *Client) Subscribe(ctx context.Context, serviceName string, callback func(s *stela.Service)) error {
 	_, err := c.rpc.Subscribe(ctx,
 		&pb.SubscribeRequest{
@@ -129,6 +132,8 @@ func (c *Client) Subscribe(ctx context.Context, serviceName string, callback fun
 	return nil
 }
 
+// Unsubscribe removes the callback to the service name and let's the stela instance know the client
+// doesn't want updates on that serviceName.
 func (c *Client) Unsubscribe(ctx context.Context, serviceName string) error {
 	if c.callbacks == nil {
 		return errors.New("Client hasn't subscribed")
@@ -151,6 +156,7 @@ func (c *Client) Unsubscribe(ctx context.Context, serviceName string) error {
 	return nil
 }
 
+// RegisterService registers a service to the stela instance the client is connected to.
 func (c *Client) RegisterService(ctx context.Context, s *stela.Service) error {
 	s.Hostname = c.Hostname
 	if s.IPv4 == "" {
@@ -176,6 +182,7 @@ func (c *Client) RegisterService(ctx context.Context, s *stela.Service) error {
 	return nil
 }
 
+// DeregisterService deregisters a service to the stela instance the client is connected to.
 func (c *Client) DeregisterService(ctx context.Context, s *stela.Service) error {
 	// s.IPv4 = c.Address
 	s.Hostname = c.Hostname
@@ -198,8 +205,9 @@ func (c *Client) DeregisterService(ctx context.Context, s *stela.Service) error 
 	return nil
 }
 
+// Discover services registered with the same service name.
 func (c *Client) Discover(ctx context.Context, serviceName string) ([]*stela.Service, error) {
-	resp, err := c.rpc.PeerDiscover(ctx, &pb.DiscoverRequest{ServiceName: serviceName})
+	resp, err := c.rpc.Discover(ctx, &pb.DiscoverRequest{ServiceName: serviceName})
 	if err != nil {
 		return nil, err
 	}
@@ -222,8 +230,9 @@ func (c *Client) Discover(ctx context.Context, serviceName string) ([]*stela.Ser
 	return services, nil
 }
 
+// DiscoverRegex finds services by name based on a regular expression.
 func (c *Client) DiscoverRegex(ctx context.Context, reg string) ([]*stela.Service, error) {
-	resp, err := c.rpc.PeerDiscoverRegex(ctx, &pb.DiscoverRequest{ServiceName: reg})
+	resp, err := c.rpc.DiscoverRegex(ctx, &pb.DiscoverRequest{ServiceName: reg})
 	if err != nil {
 		return nil, err
 	}
@@ -246,8 +255,9 @@ func (c *Client) DiscoverRegex(ctx context.Context, reg string) ([]*stela.Servic
 	return services, nil
 }
 
+// DiscoverOne finds a single instance of a service based on name.
 func (c *Client) DiscoverOne(ctx context.Context, serviceName string) (*stela.Service, error) {
-	resp, err := c.rpc.PeerDiscoverOne(ctx, &pb.DiscoverRequest{ServiceName: serviceName})
+	resp, err := c.rpc.DiscoverOne(ctx, &pb.DiscoverRequest{ServiceName: serviceName})
 	if err != nil {
 		return nil, err
 	}
@@ -264,8 +274,9 @@ func (c *Client) DiscoverOne(ctx context.Context, serviceName string) (*stela.Se
 	}, nil
 }
 
+// DiscoverAll finds all services registered.
 func (c *Client) DiscoverAll(ctx context.Context) ([]*stela.Service, error) {
-	resp, err := c.rpc.PeerDiscoverAll(ctx, &pb.DiscoverAllRequest{})
+	resp, err := c.rpc.DiscoverAll(ctx, &pb.DiscoverAllRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -288,6 +299,7 @@ func (c *Client) DiscoverAll(ctx context.Context) ([]*stela.Service, error) {
 	return services, nil
 }
 
+// Close cancels the stream to the gRPC stream established by connect().
 func (c *Client) Close() {
 
 	c.conn.Close()

@@ -269,8 +269,8 @@ func (s *Server) NotifyClients(ctx context.Context, req *pb.ServiceMessage) (*pb
 	return &pb.NotifyResponse{}, nil
 }
 
-// Discover all services registered under a service name. Ex. "test.services.fg"
-func (s *Server) Discover(ctx context.Context, req *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
+// InstanceDiscover all services registered under a service name. Ex. "test.services.fg"
+func (s *Server) InstanceDiscover(ctx context.Context, req *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
 	services, err := s.Store.Discover(req.ServiceName)
 	if err != nil {
 		return nil, err
@@ -294,8 +294,8 @@ func (s *Server) Discover(ctx context.Context, req *pb.DiscoverRequest) (*pb.Dis
 	return &pb.DiscoverResponse{Services: srs}, nil
 }
 
-// DiscoverRegex all services registered under a service name. Ex. "test.services.fg"
-func (s *Server) DiscoverRegex(ctx context.Context, req *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
+// InstanceDiscoverRegex all services registered under a service name. Ex. "test.services.fg"
+func (s *Server) InstanceDiscoverRegex(ctx context.Context, req *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
 	services, err := s.Store.DiscoverRegex(req.ServiceName)
 	if err != nil {
 		return nil, err
@@ -319,8 +319,8 @@ func (s *Server) DiscoverRegex(ctx context.Context, req *pb.DiscoverRequest) (*p
 	return &pb.DiscoverResponse{Services: srs}, nil
 }
 
-// DiscoverOne service registered under a service name.
-func (s *Server) DiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (*pb.ServiceMessage, error) {
+// InstanceDiscoverOne service registered under a service name.
+func (s *Server) InstanceDiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (*pb.ServiceMessage, error) {
 	service, err := s.Store.DiscoverOne(req.ServiceName)
 	if err != nil {
 		return nil, err
@@ -338,8 +338,8 @@ func (s *Server) DiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (*pb.
 	}, nil
 }
 
-// DiscoverAll returns all services registered with stela even other clients TODO
-func (s *Server) DiscoverAll(ctx context.Context, req *pb.DiscoverAllRequest) (*pb.DiscoverResponse, error) {
+// InstanceDiscoverAll returns all services registered with stela even other clients TODO
+func (s *Server) InstanceDiscoverAll(ctx context.Context, req *pb.DiscoverAllRequest) (*pb.DiscoverResponse, error) {
 	services := s.Store.DiscoverAll()
 
 	// Convert stela.Service struct to pb.ServiceResponse
@@ -360,8 +360,8 @@ func (s *Server) DiscoverAll(ctx context.Context, req *pb.DiscoverAllRequest) (*
 	return &pb.DiscoverResponse{Services: srs}, nil
 }
 
-// PeerDiscover all services registered under a service name. Ex. "test.services.fg"
-func (s *Server) PeerDiscover(ctx context.Context, req *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
+// Discover all services registered under a service name. Ex. "test.services.fg"
+func (s *Server) Discover(ctx context.Context, req *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 
@@ -392,7 +392,7 @@ func (s *Server) PeerDiscover(ctx context.Context, req *pb.DiscoverRequest) (*pb
 				}
 				defer conn.Close()
 				c := pb.NewStelaClient(conn)
-				resp, err := c.Discover(ctx, req)
+				resp, err := c.InstanceDiscover(ctx, req)
 				if err != nil {
 					return
 				}
@@ -416,8 +416,8 @@ func (s *Server) PeerDiscover(ctx context.Context, req *pb.DiscoverRequest) (*pb
 	return &pb.DiscoverResponse{Services: results}, nil
 }
 
-// PeerDiscoverRegex all services registered under a service name. Ex. "test.services.fg"
-func (s *Server) PeerDiscoverRegex(ctx context.Context, req *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
+// DiscoverRegex all services registered under a service name. Ex. "test.services.fg"
+func (s *Server) DiscoverRegex(ctx context.Context, req *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 
@@ -448,7 +448,7 @@ func (s *Server) PeerDiscoverRegex(ctx context.Context, req *pb.DiscoverRequest)
 				}
 				defer conn.Close()
 				c := pb.NewStelaClient(conn)
-				resp, err := c.DiscoverRegex(ctx, req)
+				resp, err := c.InstanceDiscoverRegex(ctx, req)
 				if err != nil {
 					return
 				}
@@ -472,9 +472,9 @@ func (s *Server) PeerDiscoverRegex(ctx context.Context, req *pb.DiscoverRequest)
 	return &pb.DiscoverResponse{Services: results}, nil
 }
 
-// PeerDiscoverOne service registered under a service name.
+// DiscoverOne service registered under a service name.
 // TODO Round Robin peers
-func (s *Server) PeerDiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (*pb.ServiceMessage, error) {
+func (s *Server) DiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (*pb.ServiceMessage, error) {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 
@@ -504,7 +504,7 @@ func (s *Server) PeerDiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (
 				}
 				defer conn.Close()
 				c := pb.NewStelaClient(conn)
-				resp, err := c.DiscoverOne(ctx, req)
+				resp, err := c.InstanceDiscoverOne(ctx, req)
 				if err != nil {
 					return
 				}
@@ -540,8 +540,8 @@ func (s *Server) PeerDiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (
 	return results[index], nil
 }
 
-// PeerDiscoverAll returns all services registered with any stela member peer
-func (s *Server) PeerDiscoverAll(ctx context.Context, req *pb.DiscoverAllRequest) (*pb.DiscoverResponse, error) {
+// DiscoverAll returns all services registered with any stela member peer
+func (s *Server) DiscoverAll(ctx context.Context, req *pb.DiscoverAllRequest) (*pb.DiscoverResponse, error) {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 
@@ -571,7 +571,7 @@ func (s *Server) PeerDiscoverAll(ctx context.Context, req *pb.DiscoverAllRequest
 				}
 				defer conn.Close()
 				c := pb.NewStelaClient(conn)
-				resp, err := c.DiscoverAll(ctx, req)
+				resp, err := c.InstanceDiscoverAll(ctx, req)
 				if err != nil {
 					return
 				}

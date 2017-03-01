@@ -65,7 +65,7 @@ func (s *Server) Connect(req *pb.ConnectRequest, stream pb.Stela_ConnectServer) 
 				Port:     rs.Port,
 				Priority: rs.Priority,
 				Action:   rs.Action,
-				Value:    stela.EncodeValue(rs.Value),
+				Value:    rs.Value,
 			}
 
 			if err := stream.Send(response); err != nil {
@@ -149,7 +149,7 @@ func (s *Server) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.Reg
 		Port:     req.Service.Port,
 		Priority: req.Service.Priority,
 		Action:   stela.RegisterAction,
-		Value:    stela.DecodeValue(req.Service.Value),
+		Value:    req.Service.Value,
 	}
 
 	// Register service to store
@@ -228,12 +228,12 @@ func (s *Server) peerNotify(service *stela.Service) {
 					Port:     service.Port,
 					Priority: service.Priority,
 					Action:   service.Action,
-					Value:    stela.EncodeValue(service.Value),
+					Value:    service.Value,
 				}
 
 				_, err = c.NotifyClients(ctx, serviceMessage)
 				if err != nil {
-					fmt.Println("peerNotify err,", err)
+					// fmt.Println("peerNotify err,", err)
 					return
 				}
 			}()
@@ -261,7 +261,7 @@ func (s *Server) NotifyClients(ctx context.Context, req *pb.ServiceMessage) (*pb
 		Port:     req.Port,
 		Priority: req.Priority,
 		Action:   req.Action,
-		Value:    stela.DecodeValue(req.Value),
+		Value:    req.Value,
 	}
 
 	s.Store.NotifyClients(service)
@@ -286,7 +286,7 @@ func (s *Server) InstanceDiscover(ctx context.Context, req *pb.DiscoverRequest) 
 			IPv6:     ds.IPv6,
 			Port:     ds.Port,
 			Priority: ds.Priority,
-			Value:    stela.EncodeValue(ds.Value),
+			Value:    ds.Value,
 		}
 		srs = append(srs, sr)
 	}
@@ -311,7 +311,7 @@ func (s *Server) InstanceDiscoverRegex(ctx context.Context, req *pb.DiscoverRequ
 			IPv6:     ds.IPv6,
 			Port:     ds.Port,
 			Priority: ds.Priority,
-			Value:    stela.EncodeValue(ds.Value),
+			Value:    ds.Value,
 		}
 		srs = append(srs, sr)
 	}
@@ -334,7 +334,7 @@ func (s *Server) InstanceDiscoverOne(ctx context.Context, req *pb.DiscoverReques
 		IPv6:     service.IPv6,
 		Port:     service.Port,
 		Priority: service.Priority,
-		Value:    stela.EncodeValue(service.Value),
+		Value:    service.Value,
 	}, nil
 }
 
@@ -352,7 +352,7 @@ func (s *Server) InstanceDiscoverAll(ctx context.Context, req *pb.DiscoverAllReq
 			IPv6:     ds.IPv6,
 			Port:     ds.Port,
 			Priority: ds.Priority,
-			Value:    stela.EncodeValue(ds.Value),
+			Value:    ds.Value,
 		}
 		srs = append(srs, sr)
 	}

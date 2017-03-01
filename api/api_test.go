@@ -398,28 +398,28 @@ func TestMaxValue(t *testing.T) {
 				Hostname: "jlu.macbook",
 				IPv4:     "127.0.0.1",
 				Port:     9001,
-				Value:    "Value string",
+				Value:    stela.EncodeValue("Value string"),
 			}, false},
 			{&stela.Service{
 				Name:     serviceName,
 				Hostname: "jlu.macbook",
 				IPv4:     "127.0.0.1",
 				Port:     3002,
-				Value:    &stela.Service{},
+				Value:    stela.EncodeValue(&stela.Service{}),
 			}, false},
 			{&stela.Service{
 				Name:     serviceName,
 				Hostname: "jlu.macbook",
 				IPv4:     "127.0.0.1",
 				Port:     10001,
-				Value:    make([]byte, 208), // Need to account for the byte slice being converted to a gob
+				Value:    make([]byte, 256),
 			}, false},
 			{&stela.Service{
 				Name:     serviceName,
 				Hostname: "jlu.macbook",
 				IPv4:     "127.0.0.1",
 				Port:     9002,
-				Value:    make([]byte, 209),
+				Value:    make([]byte, 257),
 			}, true},
 		}
 
@@ -569,7 +569,7 @@ func TestValue(t *testing.T) {
 	defer c.Close()
 
 	callback := func(s *stela.Service) {
-		if s.Value != value {
+		if stela.DecodeValue(s.Value) != value {
 			t.Fatalf("Value is incorrected. Got %v, Wanted: %v", s.Value, value)
 		}
 	}
@@ -587,8 +587,9 @@ func TestValue(t *testing.T) {
 		Hostname: "jlu.macbook",
 		IPv4:     "127.0.0.1",
 		Port:     9000,
-		Value:    value,
+		Value:    stela.EncodeValue(value),
 	}
+
 	if err := c.RegisterService(ctx, service); err != nil {
 		t.Fatal(err)
 	}
@@ -598,8 +599,8 @@ func TestValue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.Value != value {
-		t.Fatalf("Value is incorrected. Got %v, Wanted: %v", s.Value, value)
+	if stela.DecodeValue(s.Value) != value {
+		t.Fatalf("Value is incorrected. Got %v, Wanted: %v", stela.DecodeValue(s.Value), value)
 	}
 
 	// Discover the service and make sure the value is returned
@@ -609,7 +610,7 @@ func TestValue(t *testing.T) {
 	}
 	for _, s := range ds {
 		if s.Name == serviceName {
-			if s.Value != value {
+			if stela.DecodeValue(s.Value) != value {
 				t.Fatalf("Value is incorrected. Got %v, Wanted: %v", ds[0].Value, value)
 			}
 		}
@@ -622,7 +623,7 @@ func TestValue(t *testing.T) {
 	}
 	for _, s := range das {
 		if s.Name == serviceName {
-			if s.Value != value {
+			if stela.DecodeValue(s.Value) != value {
 				t.Fatalf("Value is incorrected. Got %v, Wanted: %v", ds[0].Value, value)
 			}
 		}

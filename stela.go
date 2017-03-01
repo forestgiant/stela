@@ -53,7 +53,7 @@ type Service struct {
 	Timeout      int32 // The length of time, in milliseconds, before a service is deregistered
 	Action       int32
 	Client       *Client // Store reference to the client that registered the service
-	Value        interface{}
+	Value        []byte
 	id           string // Automatically set when the service is registered
 	registerCh   chan struct{}
 	deregisterCh chan struct{}

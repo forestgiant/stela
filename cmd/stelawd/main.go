@@ -152,7 +152,7 @@ func createWatchers(stelaClient *api.Client, config io.Reader) ([]*watcher, erro
 				Name:  serviceName,
 				IPv4:  ip,
 				Port:  int32(port),
-				Value: value,
+				Value: stela.EncodeValue(value),
 			},
 			interval:    time.Millisecond * time.Duration(interval),
 			stelaClient: stelaClient,

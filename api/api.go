@@ -101,7 +101,7 @@ func (c *Client) connect() error {
 					Port:     rs.Port,
 					Priority: rs.Priority,
 					Action:   rs.Action,
-					Value:    stela.DecodeValue(rs.Value),
+					Value:    rs.Value,
 				})
 				c.mu.RUnlock()
 			}
@@ -172,7 +172,7 @@ func (c *Client) RegisterService(ctx context.Context, s *stela.Service) error {
 				IPv6:     s.IPv6,
 				Port:     s.Port,
 				Priority: s.Priority,
-				Value:    stela.EncodeValue(s.Value),
+				Value:    s.Value,
 			},
 		})
 	if err != nil {
@@ -222,7 +222,7 @@ func (c *Client) Discover(ctx context.Context, serviceName string) ([]*stela.Ser
 			IPv6:     ds.IPv6,
 			Port:     ds.Port,
 			Priority: ds.Priority,
-			Value:    stela.DecodeValue(ds.Value),
+			Value:    ds.Value,
 		}
 		services = append(services, s)
 	}
@@ -247,7 +247,7 @@ func (c *Client) DiscoverRegex(ctx context.Context, reg string) ([]*stela.Servic
 			IPv6:     ds.IPv6,
 			Port:     ds.Port,
 			Priority: ds.Priority,
-			Value:    stela.DecodeValue(ds.Value),
+			Value:    ds.Value,
 		}
 		services = append(services, s)
 	}
@@ -270,7 +270,7 @@ func (c *Client) DiscoverOne(ctx context.Context, serviceName string) (*stela.Se
 		IPv6:     resp.IPv6,
 		Port:     resp.Port,
 		Priority: resp.Priority,
-		Value:    stela.DecodeValue(resp.Value),
+		Value:    resp.Value,
 	}, nil
 }
 
@@ -291,7 +291,7 @@ func (c *Client) DiscoverAll(ctx context.Context) ([]*stela.Service, error) {
 			IPv6:     ds.IPv6,
 			Port:     ds.Port,
 			Priority: ds.Priority,
-			Value:    stela.DecodeValue(ds.Value),
+			Value:    ds.Value,
 		}
 		services = append(services, s)
 	}

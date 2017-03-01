@@ -104,7 +104,7 @@ func TestRegisterAndDiscover(t *testing.T) {
 	for _, s := range c2Services {
 		registerCtx, cancelRegister := context.WithCancel(context.Background())
 		defer cancelRegister()
-		if err := c2.RegisterService(registerCtx, s); err != nil {
+		if err := c2.Register(registerCtx, s); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -148,7 +148,7 @@ func TestRegisterAndDiscover(t *testing.T) {
 	for i, test := range tests {
 		registerCtx, cancelRegister := context.WithCancel(context.Background())
 		defer cancelRegister()
-		if err := c.RegisterService(registerCtx, test.service); test.shouldFail != (err != nil) {
+		if err := c.Register(registerCtx, test.service); test.shouldFail != (err != nil) {
 			t.Fatal(i, test, err)
 		}
 
@@ -195,7 +195,7 @@ func TestRegisterAndDiscover(t *testing.T) {
 	// Register another stela with c
 	registerCtx, cancelRegister := context.WithCancel(context.Background())
 	defer cancelRegister()
-	if err := c.RegisterService(registerCtx,
+	if err := c.Register(registerCtx,
 		&stela.Service{
 			Name:     stela.ServiceName,
 			Hostname: "jlu.macbook",
@@ -264,7 +264,7 @@ func TestDeregister(t *testing.T) {
 
 	// Register all the services
 	for _, s := range services {
-		if err := c.RegisterService(context.Background(), s); err != nil {
+		if err := c.Register(context.Background(), s); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -280,7 +280,7 @@ func TestDeregister(t *testing.T) {
 
 	// Deregister all services
 	for _, s := range services {
-		if err := c.DeregisterService(context.Background(), s); err != nil {
+		if err := c.Deregister(context.Background(), s); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -334,7 +334,7 @@ func TestDiscoverRegex(t *testing.T) {
 
 	// Register the services
 	for i, s := range services {
-		if err := c.RegisterService(context.Background(), s); err != nil {
+		if err := c.Register(context.Background(), s); err != nil {
 			t.Fatal(i, s, err)
 		}
 	}
@@ -425,7 +425,7 @@ func TestMaxValue(t *testing.T) {
 
 	// Register services to test value
 	for i, test := range tests {
-		if err := c.RegisterService(context.Background(), test.service); test.shouldFail != (err != nil) {
+		if err := c.Register(context.Background(), test.service); test.shouldFail != (err != nil) {
 			t.Fatal(i, test, err)
 		}
 	}
@@ -514,7 +514,7 @@ func TestConnectSubscribe(t *testing.T) {
 	for _, s := range testServices {
 		registerCtx, cancelRegister := context.WithCancel(context.Background())
 		defer cancelRegister()
-		if err := c.RegisterService(registerCtx, s); err != nil {
+		if err := c.Register(registerCtx, s); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -590,7 +590,7 @@ func TestValue(t *testing.T) {
 		Value:    stela.EncodeValue(value),
 	}
 
-	if err := c.RegisterService(ctx, service); err != nil {
+	if err := c.Register(ctx, service); err != nil {
 		t.Fatal(err)
 	}
 

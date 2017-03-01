@@ -156,8 +156,8 @@ func (c *Client) Unsubscribe(ctx context.Context, serviceName string) error {
 	return nil
 }
 
-// RegisterService registers a service to the stela instance the client is connected to.
-func (c *Client) RegisterService(ctx context.Context, s *stela.Service) error {
+// Register registers a service to the stela instance the client is connected to.
+func (c *Client) Register(ctx context.Context, s *stela.Service) error {
 	s.Hostname = c.Hostname
 	if s.IPv4 == "" {
 		s.IPv4 = c.Address
@@ -182,8 +182,8 @@ func (c *Client) RegisterService(ctx context.Context, s *stela.Service) error {
 	return nil
 }
 
-// DeregisterService deregisters a service to the stela instance the client is connected to.
-func (c *Client) DeregisterService(ctx context.Context, s *stela.Service) error {
+// Deregister deregisters a service to the stela instance the client is connected to.
+func (c *Client) Deregister(ctx context.Context, s *stela.Service) error {
 	// s.IPv4 = c.Address
 	s.Hostname = c.Hostname
 	_, err := c.rpc.Deregister(ctx,

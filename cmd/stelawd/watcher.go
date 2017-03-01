@@ -66,11 +66,11 @@ func (w *watcher) updateRegistry() bool {
 	conn, err := net.Dial("tcp", net.JoinHostPort(w.service.IPv4, strconv.Itoa(int(w.service.Port))))
 	// If there was an error that means the connection didn't happen and we need to deregister the service
 	if err != nil {
-		w.stelaClient.DeregisterService(registerCtx, w.service)
+		w.stelaClient.Deregister(registerCtx, w.service)
 		return false
 	}
 	conn.Close()
-	if err := w.stelaClient.RegisterService(registerCtx, w.service); err != nil {
+	if err := w.stelaClient.Register(registerCtx, w.service); err != nil {
 		return false
 	}
 	return true

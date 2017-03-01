@@ -46,7 +46,7 @@ func ExampleStelaApi() {
 	// Now register with stela
 	registerCtx, cancelRegister := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancelRegister()
-	if err := client.RegisterService(registerCtx, service); err != nil {
+	if err := client.Register(registerCtx, service); err != nil {
 		log.Fatal(err)
 	}
 
@@ -66,7 +66,7 @@ func ExampleStelaApi() {
 	// When finished deregister
 	deregisterCtx, cancelDeregister := context.WithCancel(context.Background())
 	defer cancelDeregister()
-	err = client.DeregisterService(deregisterCtx, service)
+	err = client.Deregister(deregisterCtx, service)
 	if err != nil {
 		log.Fatal(err)
 	}

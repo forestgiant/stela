@@ -28,7 +28,7 @@ func main() {
 	logger := fglog.Logger{}.With("time", fglog.DefaultTimestamp, "caller", fglog.DefaultCaller, "cli", "stelawd")
 	err := semver.SetVersion(stela.Version)
 	if err != nil {
-		logger.Error("error", err.Error())
+		logger.Error("Unable to set semantic version.", "error", err.Error())
 		os.Exit(1)
 	}
 

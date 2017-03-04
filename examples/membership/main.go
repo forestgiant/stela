@@ -42,9 +42,9 @@ func main() {
 	stelaClient.Subscribe(subscribeCtx, serviceName, func(s *stela.Service) {
 		switch s.Action {
 		case stela.RegisterAction:
-			fmt.Printf("New member registered: %s:%d. With message: %v \n", s.IPv4, s.Port, s.Value)
+			fmt.Printf("New member registered: %s:%d. With message: %v \n", s.IPv4, s.Port, stela.DecodeValue(s.Value))
 		case stela.DeregisterAction:
-			fmt.Printf("New member deregistered: %s:%d. With message: %v \n", s.IPv4, s.Port, s.Value)
+			fmt.Printf("New member deregistered: %s:%d. With message: %v \n", s.IPv4, s.Port, stela.DecodeValue(s.Value))
 		}
 
 		// Print total members
@@ -62,12 +62,12 @@ func main() {
 	memberService := &stela.Service{
 		Name:  serviceName,
 		Port:  int32(port),
-		Value: "Hello World.",
+		Value: stela.EncodeValue("Hello World."),
 	}
 
 	registerCtx, cancelRegister := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancelRegister()
-	if err := stelaClient.RegisterService(registerCtx, memberService); err != nil {
+	if err := stelaClient.Register(registerCtx, memberService); err != nil {
 		logger.Error("failed to register with stela:", "error", err.Error())
 		os.Exit(1)
 	}

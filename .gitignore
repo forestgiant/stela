@@ -1,0 +1,7 @@
+bin
+pkg
+logs
+.DS_Store
+*.db
+*.out
+peers.json

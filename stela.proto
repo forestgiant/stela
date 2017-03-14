@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package stela;
+
+service Stela {
+    rpc Connect(Client) returns (stream Service) {}
+    rpc Subscribe(SubscribeRequest) returns (Empty) {}
+    rpc Register(Service) returns (Empty) {}
+    rpc Discover(DiscoverRequest) returns (DiscoverResponse) {}
+    rpc DiscoverOne(DiscoverRequest) returns (Service) {}
+}
+
+message Empty{}
+
+message Service {
+    required string name = 1;
+    required string hostname = 2;
+    required string address = 3;
+    required int32 port = 4;
+    int32 priority = 5;
+}
+
+message SubscribeRequest {
+    required string service_name = 1;
+}
+
+message DiscoverRequest {
+    required string service_name = 1;
+}
+
+message DiscoverResponse {
+    repeated Service services = 1;
+}
+
+message Client {
+    required string uuid = 1;
+}

@@ -4,5 +4,7 @@ logs
 .DS_Store
 *.db
 *.out
+*.crt
+*.key
 examples/membership/membership
 cmd/stelawd/stelawd

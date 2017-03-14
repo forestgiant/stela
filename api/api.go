@@ -1,8 +1,12 @@
 package api
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"sync"
 
@@ -11,7 +15,15 @@ import (
 	"gitlab.fg/go/stela/pb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/grpclog"
+
+	fggrpclog "github.com/forestgiant/grpclog"
 )
+
+func init() {
+	grpclog.SetLogger(&fggrpclog.Suppressed{})
+}
 
 // Client struct represents a connection client connection to a stela instance
 type Client struct {
@@ -25,25 +37,22 @@ type Client struct {
 	callbacks map[string]func(s *stela.Service)
 }
 
-// NewClient returns a *Client struct
-func NewClient(ctx context.Context, stelaAddress string, caFile string) (*Client, error) {
+// NewClient returns a new Stela gRPC client for the given server address.
+// The client's Close method should be called when the returned client is no longer needed.
+func NewClient(ctx context.Context, stelaAddress string, opts []grpc.DialOption) (*Client, error) {
 	c := &Client{}
 	host, err := os.Hostname()
 	if err != nil {
 		return nil, err
 	}
-	// c.ctx = ctx
 	c.Hostname = host
 	c.Address = netutil.LocalIPv4().String()
 
-	var opts []grpc.DialOption
-	// creds, err := credentials.NewClientTLSFromFile(caFile, "")
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// opts = append(opts, grpc.WithTransportCredentials(creds))
-	opts = append(opts, grpc.WithInsecure())
+	if len(opts) == 0 {
+		opts = append(opts, grpc.WithInsecure())
+	}
+	opts = append(opts, grpc.FailOnNonTempDialError(true))
+	opts = append(opts, grpc.WithBlock())
 	c.conn, err = grpc.Dial(stelaAddress, opts...)
 	if err != nil {
 		return nil, err
@@ -63,6 +72,44 @@ func NewClient(ctx context.Context, stelaAddress string, caFile string) (*Client
 	}
 
 	return c, nil
+}
+
+// NewTLSClient returns a new Stela gRPC client for the given server address.  You must provide paths to a
+// certificate authority, client certificate, and client private key.  You must also provide a value for
+// server name that matches the common name in the certificate of the server you are connecting to.
+// The client's Close method should be called when the returned client is no longer needed.
+func NewTLSClient(ctx context.Context, serverAddress string, serverName string, cert string, privateKey string, certificateAuthority string) (*Client, error) {
+	var opts []grpc.DialOption
+	if len(cert) == 0 || len(privateKey) == 0 || len(certificateAuthority) == 0 || len(serverName) == 0 {
+		return nil, errors.New("Insufficient security credentials provided")
+	}
+
+	// Load the client certificates from disk
+	certificate, err := tls.LoadX509KeyPair(cert, privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("Could not load client key pair: %s", err)
+	}
+
+	// Create a certificate pool from the certificate authority
+	certPool := x509.NewCertPool()
+	ca, err := ioutil.ReadFile(certificateAuthority)
+	if err != nil {
+		return nil, fmt.Errorf("Could not read ca certificate: %s", err)
+	}
+
+	// Append the certificates from the CA
+	if ok := certPool.AppendCertsFromPEM(ca); !ok {
+		return nil, errors.New("Failed to append ca certs")
+	}
+
+	creds := credentials.NewTLS(&tls.Config{
+		ServerName:   serverName,
+		Certificates: []tls.Certificate{certificate},
+		RootCAs:      certPool,
+	})
+
+	opts = append(opts, grpc.WithTransportCredentials(creds))
+	return NewClient(ctx, serverAddress, opts)
 }
 
 func (c *Client) init() {

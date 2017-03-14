@@ -11,10 +11,10 @@ import (
 )
 
 func ExampleStelaApi() {
-	// Create stela client
+	// Create an insecure stela client
 	ctx, cancelFunc := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancelFunc()
-	client, err := NewClient(ctx, stela.DefaultStelaAddress, "../testdata/ca.pem") // The default is localhost
+	client, err := NewClient(ctx, stela.DefaultStelaAddress, nil) // The default is localhost
 	if err != nil {
 		log.Fatal(err)
 	}

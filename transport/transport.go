@@ -1,8 +1,11 @@
 package transport
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net"
 
@@ -18,6 +21,7 @@ import (
 	"gitlab.fg/go/stela/store"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // Server implements the stela.proto service
@@ -26,6 +30,15 @@ type Server struct {
 	Store   store.Store
 	peers   []*node.Node
 	Timeout time.Duration
+	Proxy   *Proxy
+}
+
+// Proxy information used to connect to stela peers
+type Proxy struct {
+	ServerName string
+	CertPath   string
+	KeyPath    string
+	CAPath     string
 }
 
 // AddClient adds a client to the store and returns it's id
@@ -79,7 +92,9 @@ func (s *Server) Connect(req *pb.ConnectRequest, stream pb.Stela_ConnectServer) 
 
 				// Notify all peers about the deregistered service
 				rs.Action = stela.DeregisterAction
-				s.peerNotify(rs)
+				if err := s.peerNotify(rs); err != nil {
+					continue
+				}
 			}
 
 			// Remove client from store to cleanup
@@ -158,7 +173,9 @@ func (s *Server) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.Reg
 	}
 
 	// Notify all peers about the new service
-	s.peerNotify(service)
+	if err := s.peerNotify(service); err != nil {
+		return nil, err
+	}
 
 	return &pb.RegisterResponse{}, nil
 }
@@ -186,14 +203,21 @@ func (s *Server) Deregister(ctx context.Context, req *pb.RegisterRequest) (*pb.R
 
 	// Notify all peers that a service was deregistered
 	if ds != nil {
-		s.peerNotify(ds)
+		if err := s.peerNotify(ds); err != nil {
+			return nil, err
+		}
 	}
 
 	return &pb.RegisterResponse{}, nil
 }
 
 // peerNotify calls NotifyClients on all Store peers
-func (s *Server) peerNotify(service *stela.Service) {
+func (s *Server) peerNotify(service *stela.Service) error {
+	opts, err := s.gRPCOptions()
+	if err != nil {
+		return err
+	}
+
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 	for _, p := range s.peers {
@@ -214,7 +238,7 @@ func (s *Server) peerNotify(service *stela.Service) {
 				}
 
 				// Dial the server
-				conn, err := grpc.Dial(address, gRPCOptions()...)
+				conn, err := grpc.Dial(address, opts...)
 				if err != nil {
 					return
 				}
@@ -248,6 +272,8 @@ func (s *Server) peerNotify(service *stela.Service) {
 		}(p)
 	}
 	wg.Wait()
+
+	return nil
 }
 
 // NotifyClients tells all locally subscribed clients about a service change
@@ -362,6 +388,11 @@ func (s *Server) InstanceDiscoverAll(ctx context.Context, req *pb.DiscoverAllReq
 
 // Discover all services registered under a service name. Ex. "test.services.fg"
 func (s *Server) Discover(ctx context.Context, req *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
+	opts, err := s.gRPCOptions()
+	if err != nil {
+		return nil, err
+	}
+
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 
@@ -386,7 +417,7 @@ func (s *Server) Discover(ctx context.Context, req *pb.DiscoverRequest) (*pb.Dis
 				}
 
 				// Dial the server
-				conn, err := grpc.Dial(address, gRPCOptions()...)
+				conn, err := grpc.Dial(address, opts...)
 				if err != nil {
 					return
 				}
@@ -418,6 +449,11 @@ func (s *Server) Discover(ctx context.Context, req *pb.DiscoverRequest) (*pb.Dis
 
 // DiscoverRegex all services registered under a service name. Ex. "test.services.fg"
 func (s *Server) DiscoverRegex(ctx context.Context, req *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
+	opts, err := s.gRPCOptions()
+	if err != nil {
+		return nil, err
+	}
+
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 
@@ -442,7 +478,7 @@ func (s *Server) DiscoverRegex(ctx context.Context, req *pb.DiscoverRequest) (*p
 				}
 
 				// Dial the server
-				conn, err := grpc.Dial(address, gRPCOptions()...)
+				conn, err := grpc.Dial(address, opts...)
 				if err != nil {
 					return
 				}
@@ -475,6 +511,11 @@ func (s *Server) DiscoverRegex(ctx context.Context, req *pb.DiscoverRequest) (*p
 // DiscoverOne service registered under a service name.
 // TODO Round Robin peers
 func (s *Server) DiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (*pb.ServiceMessage, error) {
+	opts, err := s.gRPCOptions()
+	if err != nil {
+		return nil, err
+	}
+
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 
@@ -498,7 +539,7 @@ func (s *Server) DiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (*pb.
 				}
 
 				// Dial the server
-				conn, err := grpc.Dial(address, gRPCOptions()...)
+				conn, err := grpc.Dial(address, opts...)
 				if err != nil {
 					return
 				}
@@ -542,6 +583,11 @@ func (s *Server) DiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (*pb.
 
 // DiscoverAll returns all services registered with any stela member peer
 func (s *Server) DiscoverAll(ctx context.Context, req *pb.DiscoverAllRequest) (*pb.DiscoverResponse, error) {
+	opts, err := s.gRPCOptions()
+	if err != nil {
+		return nil, err
+	}
+
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
 
@@ -565,7 +611,7 @@ func (s *Server) DiscoverAll(ctx context.Context, req *pb.DiscoverAllRequest) (*
 				}
 
 				// Dial the server
-				conn, err := grpc.Dial(address, gRPCOptions()...)
+				conn, err := grpc.Dial(address, opts...)
 				if err != nil {
 					return
 				}
@@ -602,17 +648,39 @@ func (s *Server) SetPeers(peers []*node.Node) {
 	s.peers = peers
 }
 
-func gRPCOptions() []grpc.DialOption {
+func (s *Server) gRPCOptions() ([]grpc.DialOption, error) {
 	var opts []grpc.DialOption
-	// creds, err := credentials.NewClientTLSFromFile(caFile, "")
-	// if err != nil {
-	// 	return nil, err
-	// }
+	if s.Proxy != nil {
+		// Load the client certificates from disk
+		certificate, err := tls.LoadX509KeyPair(s.Proxy.CertPath, s.Proxy.KeyPath)
+		if err != nil {
+			return nil, fmt.Errorf("Could not load client key pair: %s", err)
+		}
 
-	// opts = append(opts, grpc.WithTransportCredentials(creds))
-	opts = append(opts, grpc.WithInsecure())
+		// Create a certificate pool from the certificate authority
+		certPool := x509.NewCertPool()
+		ca, err := ioutil.ReadFile(s.Proxy.CAPath)
+		if err != nil {
+			return nil, fmt.Errorf("Could not read ca certificate: %s", err)
+		}
 
-	return opts
+		// Append the certificates from the CA
+		if ok := certPool.AppendCertsFromPEM(ca); !ok {
+			return nil, errors.New("Failed to append ca certs")
+		}
+
+		creds := credentials.NewTLS(&tls.Config{
+			ServerName:   s.Proxy.ServerName,
+			Certificates: []tls.Certificate{certificate},
+			RootCAs:      certPool,
+		})
+
+		opts = append(opts, grpc.WithTransportCredentials(creds))
+	} else {
+		opts = append(opts, grpc.WithInsecure())
+	}
+
+	return opts, nil
 }
 
 func convertToLocalIP(address string) (string, error) {

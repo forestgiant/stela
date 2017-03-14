@@ -1,8 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/signal"
@@ -11,6 +14,8 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/grpclog"
 
 	"golang.org/x/net/context"
 
@@ -19,7 +24,6 @@ import (
 
 	"runtime"
 
-	fglog "github.com/forestgiant/log"
 	"gitlab.fg/go/disco"
 	"gitlab.fg/go/disco/node"
 	"gitlab.fg/go/stela"
@@ -28,7 +32,15 @@ import (
 	"gitlab.fg/go/stela/store"
 	"gitlab.fg/go/stela/store/mapstore"
 	"gitlab.fg/go/stela/transport"
+
+	fggrpclog "github.com/forestgiant/grpclog"
+	fglog "github.com/forestgiant/log"
 )
+
+func init() {
+	l := fglog.Logger{}.With("logger", "grpc")
+	grpclog.SetLogger(&fggrpclog.Structured{Logger: &l})
+}
 
 func main() {
 	logger := fglog.Logger{}.With("time", fglog.DefaultTimestamp, "caller", fglog.DefaultCaller, "service", "stela")
@@ -46,13 +58,21 @@ func main() {
 		stelaPortPtr       = flag.Int("port", stela.DefaultStelaPort, stelaPortUsage)
 		multicastPortUsage = "Port used to multicast to other stela members."
 		multicastPortPtr   = flag.Int("multicast", stela.DefaultMulticastPort, multicastPortUsage)
-		caFileUsage        = "Path to the ca file for gRPC client to connect with."
-		caFilePtr          = flag.String("cafile", "../certs/ca.pem", caFileUsage)
+		certPathUsage      = "Path to the certificate file for the server."
+		certPathPtr        = flag.String("cert", "server.crt", certPathUsage)
+		keyPathUsage       = "Path to the private key file for the server."
+		keyPathPtr         = flag.String("key", "server.key", keyPathUsage)
+		caPathUsage        = "Path to the private key file for the server."
+		caPathPtr          = flag.String("ca", "ca.crt", caPathUsage)
+		serverNameUsage    = "The common name of the server you are connecting to."
+		serverNamePtr      = flag.String("serverName", stela.DefaultServerName, serverNameUsage)
+		insecureUsage      = "Disable SSL, allowing unenecrypted communication with this service."
+		insecurePtr        = flag.Bool("insecure", false, insecureUsage)
 	)
 	flag.Parse()
 
 	if *statusPtr {
-		stelas, err := discoverStelas(*caFilePtr)
+		stelas, err := discoverStelas(*insecurePtr, *serverNamePtr, *certPathPtr, *keyPathPtr, *serverNamePtr)
 		if err != nil {
 			fmt.Println("There are 0 stela instances currently running. Make sure you are running a local stela instance.")
 		} else {
@@ -64,11 +84,14 @@ func main() {
 
 	stelaAddr := fmt.Sprintf(":%d", *stelaPortPtr)
 	startMessage := fmt.Sprintf("Starting stela gRPC server on: %s and multicasting on port: %d", stelaAddr, *multicastPortPtr)
-	fmt.Println(startMessage)
+	logger.Info(startMessage)
 
 	// Create store and transport
 	m := &mapstore.MapStore{}
-	t := &transport.Server{Store: m, Timeout: 1 * time.Second}
+	t := &transport.Server{
+		Store:   m,
+		Timeout: 1 * time.Second,
+	}
 
 	// Setup disco and listen for other stela instances
 	multicastAddr := fmt.Sprintf("%s:%d", stela.DefaultMulticastAddress, *multicastPortPtr)
@@ -96,13 +119,13 @@ func main() {
 	// Register ourselves as a node
 	networkAddr, err := netutil.ConvertToLocalIPv4(stelaAddr)
 	if err != nil {
-		logger.Error("error", err.Error())
+		logger.Error("netutil failed to convert to local ipv4:", "error", err.Error())
 		os.Exit(1)
 	}
 
 	n := &node.Node{Payload: []byte(networkAddr), SendInterval: 2 * time.Second}
 	if err := n.Multicast(ctx, multicastAddr); err != nil {
-		logger.Error("error", err.Error())
+		logger.Error("node multicast failed:", "error", err.Error())
 		os.Exit(1)
 	}
 
@@ -115,12 +138,46 @@ func main() {
 
 	// Setup credentials
 	var opts []grpc.ServerOption
-	// creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
-	// if err != nil {
-	// 	grpclog.Fatalf("Failed to generate credentials %v", err)
-	// }
+	if !*insecurePtr {
+		// Add proxy info to transport server
+		t.Proxy = &transport.Proxy{
+			ServerName: *serverNamePtr,
+			CAPath:     *caPathPtr,
+			CertPath:   *certPathPtr,
+			KeyPath:    *keyPathPtr,
+		}
 
-	// opts = []grpc.ServerOption{grpc.Creds(creds)}
+		// Load the certificates from disk
+		certificate, err := tls.LoadX509KeyPair(*certPathPtr, *keyPathPtr)
+		if err != nil {
+			logger.Error("Failed to load certificate:", "error", err.Error())
+			os.Exit(1)
+		}
+
+		// Create a certificate pool from the certificate authority
+		certPool := x509.NewCertPool()
+		ca, err := ioutil.ReadFile(*caPathPtr)
+		if err != nil {
+			logger.Error("Failed to read CA certificate:", "error", err.Error())
+			os.Exit(1)
+		}
+
+		// Append the client certificates from the CA
+		if ok := certPool.AppendCertsFromPEM(ca); !ok {
+			logger.Error("Failed to append client cert:.", "error", err.Error())
+			os.Exit(1)
+		}
+
+		// Create the TLS credentials
+		creds := credentials.NewTLS(&tls.Config{
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+			Certificates: []tls.Certificate{certificate},
+			ClientCAs:    certPool,
+		})
+
+		opts = append(opts, grpc.Creds(creds))
+	}
+
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterStelaServer(grpcServer, t)
 
@@ -149,7 +206,7 @@ func main() {
 	select {
 	case <-ctx.Done():
 		grpcServer.Stop()
-		fmt.Println("Closing stela")
+		logger.Info("Closing stela")
 		return
 	}
 }
@@ -175,11 +232,21 @@ func registerStela(s store.Store, networkAddr string) error {
 	return nil
 }
 
-func discoverStelas(caFile string) ([]*stela.Service, error) {
-	c, err := api.NewClient(context.Background(), stela.DefaultStelaAddress, caFile)
-	if err != nil {
-		return nil, err
+func discoverStelas(insecure bool, certPath, keyPath, caFile, serverNameOverride string) ([]*stela.Service, error) {
+	var c *api.Client
+	var err error
+	if insecure {
+		c, err = api.NewClient(context.Background(), stela.DefaultStelaAddress, nil)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		c, err = api.NewTLSClient(context.Background(), stela.DefaultStelaAddress, serverNameOverride, certPath, keyPath, caFile)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	defer c.Close()
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), 500*time.Millisecond)

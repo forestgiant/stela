@@ -36,19 +36,35 @@ func main() {
 	var (
 		watcherListUsage  = "Path to the list of services to watch."
 		watcherListPtr    = flag.String("watchlist", "watch.list", watcherListUsage)
-		caFileUsage       = "Path to the ca file for gRPC client to connect with."
-		caFilePtr         = flag.String("cafile", "../certs/ca.pem", caFileUsage)
+		certPathUsage     = "Path to the certificate file for the server."
+		certPathPtr       = flag.String("cert", "client.crt", certPathUsage)
+		keyPathUsage      = "Path to the private key file for the server."
+		keyPathPtr        = flag.String("key", "client.key", keyPathUsage)
+		caPathUsage       = "Path to the private key file for the server."
+		caPathPtr         = flag.String("ca", "ca.crt", caPathUsage)
 		stelaAddressUsage = "Address of stela instance to connect to."
-		stelaAddress      = flag.String("stelaAddr", stela.DefaultStelaAddress, stelaAddressUsage)
+		stelaAddressPtr   = flag.String("stelaAddr", stela.DefaultStelaAddress, stelaAddressUsage)
+		insecureUsage     = "Disable SSL, allowing unenecrypted communication with this service."
+		insecurePtr       = flag.Bool("insecure", false, insecureUsage)
 	)
 	flag.Parse()
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancelFunc()
-	stelaClient, err := api.NewClient(ctx, *stelaAddress, *caFilePtr)
-	if err != nil {
-		logger.Error("Failed to create stela client. Make sure there is a stela instance running", "error", err.Error())
-		os.Exit(1)
+
+	var stelaClient *api.Client
+	if *insecurePtr {
+		stelaClient, err = api.NewClient(ctx, *stelaAddressPtr, nil)
+		if err != nil {
+			logger.Error("Failed to create stela client. Make sure there is a stela instance running", "error", err.Error())
+			os.Exit(1)
+		}
+	} else {
+		stelaClient, err = api.NewTLSClient(ctx, *stelaAddressPtr, stela.DefaultServerName, *certPathPtr, *keyPathPtr, *caPathPtr)
+		if err != nil {
+			logger.Error("Failed to create stela client. Make sure there is a stela instance running", "error", err.Error())
+			os.Exit(1)
+		}
 	}
 	defer stelaClient.Close()
 

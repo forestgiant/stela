@@ -14,7 +14,7 @@ import (
 
 const (
 	// Version of stela
-	Version = "1.0.0"
+	Version = "0.11.0"
 
 	// DefaultStelaAddress by default stela assumes there is a local instance running
 	DefaultStelaAddress = "127.0.0.1:31000"
@@ -33,6 +33,9 @@ const (
 
 	// DefaultMaxValueBytes only allows the Value byte slice to be 256 bytes
 	DefaultMaxValueBytes = 256
+
+	// DefaultServerName Used for TLS gRPC. Name that matches the common name in the certificate of the server
+	DefaultServerName = "Stela"
 )
 
 // Actions for Service
@@ -43,9 +46,8 @@ const (
 
 // Service used in request/response
 type Service struct {
-	Name     string
-	Hostname string
-	// Address      string // Automatically set from host:port when service is registered
+	Name         string
+	Hostname     string
 	IPv4         string
 	IPv6         string
 	Port         int32

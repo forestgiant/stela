@@ -10,14 +10,12 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"sync"
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
-
-	"sync"
-
 	"gitlab.fg/go/stela"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -25,22 +23,32 @@ const (
 	stelaTestPort     = 31100
 	stelaTestPort2    = 31200
 	testMulticastPort = 31153
-	caPem             = "../testdata/ca.pem"
+	clientCertPath    = "client.crt"
+	clientKeyPath     = "client.key"
+	caPath            = "ca.crt"
+	serverCertPath    = "server.crt"
+	serverKeyPath     = "server.key"
 )
 
+var insecure = true
+
 func TestMain(m *testing.M) {
+	run(m)
+
+	insecure = false
+
 	os.Exit(run(m))
 }
 
 func run(m *testing.M) (exitCode int) {
-	kill, err := startStelaInstance(stelaTestPort, testMulticastPort)
+	kill, err := startStelaInstance(insecure, stelaTestPort, testMulticastPort)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer kill()
 
 	// Create a second stela instance
-	kill2, err := startStelaInstance(stelaTestPort2, testMulticastPort)
+	kill2, err := startStelaInstance(insecure, stelaTestPort2, testMulticastPort)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -62,13 +70,13 @@ func TestRegisterAndDiscover(t *testing.T) {
 
 	serviceName := "apitest.services.fg"
 
-	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), caPem)
+	c, err := createStelaClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
 
-	c2, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2), caPem)
+	c2, err := createStelaClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +237,7 @@ func TestDeregister(t *testing.T) {
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
-	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), caPem)
+	c, err := createStelaClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +307,7 @@ func TestDiscoverRegex(t *testing.T) {
 	serviceName := "regex.services.fg"
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
-	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), caPem)
+	c, err := createStelaClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -355,7 +363,7 @@ func TestDiscoverOneWithNothingRegistered(t *testing.T) {
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
-	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), caPem)
+	c, err := createStelaClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -382,7 +390,7 @@ func TestMaxValue(t *testing.T) {
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
-	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), caPem)
+	c, err := createStelaClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -437,19 +445,19 @@ func TestConnectSubscribe(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
 	// Connect to both instances
-	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), caPem)
+	c, err := createStelaClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
 
-	c2, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2), caPem)
+	c2, err := createStelaClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c2.Close()
 
-	c3, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2), caPem)
+	c3, err := createStelaClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort2))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -562,7 +570,7 @@ func TestValue(t *testing.T) {
 	defer cancelFunc()
 
 	serviceName := "valuetest.services.fg"
-	c, err := NewClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort), caPem)
+	c, err := createStelaClient(ctx, fmt.Sprintf("127.0.0.1:%d", stelaTestPort))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -648,9 +656,15 @@ func equalServices(t *testing.T, s1, s2 []*stela.Service) {
 	}
 }
 
-func startStelaInstance(stelaPort, multicastPort int) (kill func(), err error) {
+func startStelaInstance(insecure bool, stelaPort, multicastPort int) (kill func(), err error) {
 	// Run a stela instance
-	cmd := exec.Command("stela", "-port", fmt.Sprint(stelaPort), "-multicast", fmt.Sprint(multicastPort))
+	var cmd *exec.Cmd
+	if insecure {
+		cmd = exec.Command("stela", "-insecure", "-port", fmt.Sprint(stelaPort), "-multicast", fmt.Sprint(multicastPort))
+	} else {
+		cmd = exec.Command("stela", "-port", fmt.Sprint(stelaPort), "-multicast", fmt.Sprint(multicastPort),
+			"cert", serverCertPath, "key", serverKeyPath, "ca", caPath)
+	}
 
 	// Print std out,err
 	createPipeScanners(cmd, fmt.Sprintf("stela port: %d", stelaPort))
@@ -686,4 +700,12 @@ func createPipeScanners(cmd *exec.Cmd, prefix string) {
 			fmt.Printf("[%s] %s\n", prefix, outScanner.Text())
 		}
 	}()
+}
+
+func createStelaClient(ctx context.Context, address string) (*Client, error) {
+	if insecure {
+		return NewClient(ctx, address, nil)
+	}
+
+	return NewTLSClient(ctx, address, stela.DefaultServerName, clientCertPath, clientKeyPath, caPath)
 }

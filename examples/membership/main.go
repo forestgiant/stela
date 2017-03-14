@@ -26,9 +26,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Create stela client
+	// Create an insecure stela client
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	stelaClient, err := api.NewClient(ctx, stela.DefaultStelaAddress, "../testdata/ca.pem") // The default is localhost
+	stelaClient, err := api.NewClient(ctx, stela.DefaultStelaAddress, nil) // The default is localhost
 	if err != nil {
 		logger.Error("failed to create stela client:", "error", err.Error())
 		os.Exit(1)

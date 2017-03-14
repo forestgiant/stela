@@ -15,10 +15,10 @@ import (
 
 	"time"
 
-	"gitlab.fg/go/disco/node"
-	"gitlab.fg/go/stela"
-	"gitlab.fg/go/stela/pb"
-	"gitlab.fg/go/stela/store"
+	"github.com/forestgiant/disco/node"
+	"github.com/forestgiant/stela"
+	"github.com/forestgiant/stela/pb"
+	"github.com/forestgiant/stela/store"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"

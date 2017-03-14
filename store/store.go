@@ -1,6 +1,6 @@
 package store
 
-import "gitlab.fg/go/stela"
+import "github.com/forestgiant/stela"
 
 // Store represents a key value service
 type Store interface {

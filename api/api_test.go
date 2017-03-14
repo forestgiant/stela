@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.fg/go/stela"
+	"github.com/forestgiant/stela"
 	"golang.org/x/net/context"
 )
 

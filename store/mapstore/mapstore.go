@@ -8,8 +8,8 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/forestgiant/stela"
 	"github.com/hashicorp/raft"
-	"gitlab.fg/go/stela"
 )
 
 // MapStore implements the Store interface creating an in memory map of stela.Services

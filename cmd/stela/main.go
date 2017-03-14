@@ -24,14 +24,14 @@ import (
 
 	"runtime"
 
-	"gitlab.fg/go/disco"
-	"gitlab.fg/go/disco/node"
-	"gitlab.fg/go/stela"
-	"gitlab.fg/go/stela/api"
-	"gitlab.fg/go/stela/pb"
-	"gitlab.fg/go/stela/store"
-	"gitlab.fg/go/stela/store/mapstore"
-	"gitlab.fg/go/stela/transport"
+	"github.com/forestgiant/disco"
+	"github.com/forestgiant/disco/node"
+	"github.com/forestgiant/stela"
+	"github.com/forestgiant/stela/api"
+	"github.com/forestgiant/stela/pb"
+	"github.com/forestgiant/stela/store"
+	"github.com/forestgiant/stela/store/mapstore"
+	"github.com/forestgiant/stela/transport"
 
 	fggrpclog "github.com/forestgiant/grpclog"
 	fglog "github.com/forestgiant/log"

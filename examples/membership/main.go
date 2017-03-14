@@ -11,8 +11,8 @@ import (
 
 	fglog "github.com/forestgiant/log"
 	"github.com/forestgiant/portutil"
-	"gitlab.fg/go/stela"
-	"gitlab.fg/go/stela/api"
+	"github.com/forestgiant/stela"
+	"github.com/forestgiant/stela/api"
 	"golang.org/x/net/context"
 )
 

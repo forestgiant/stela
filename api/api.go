@@ -11,8 +11,8 @@ import (
 	"sync"
 
 	"github.com/forestgiant/netutil"
-	"gitlab.fg/go/stela"
-	"gitlab.fg/go/stela/pb"
+	"github.com/forestgiant/stela"
+	"github.com/forestgiant/stela/pb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"

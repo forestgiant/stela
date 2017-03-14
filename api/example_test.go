@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	"gitlab.fg/go/stela"
+	"github.com/forestgiant/stela"
 )
 
 func ExampleStelaApi() {

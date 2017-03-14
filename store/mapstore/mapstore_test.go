@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"gitlab.fg/go/stela"
+	"github.com/forestgiant/stela"
 )
 
 func Test_rotateServices(t *testing.T) {

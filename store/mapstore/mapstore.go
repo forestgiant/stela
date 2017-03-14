@@ -9,21 +9,16 @@ import (
 	"sync"
 
 	"github.com/forestgiant/stela"
-	"github.com/hashicorp/raft"
 )
 
 // MapStore implements the Store interface creating an in memory map of stela.Services
 type MapStore struct {
-	RaftDir       string
-	RaftAddr      string
 	services      map[string][]*stela.Service // Map of service names that holds a slice of registered services
 	clients       []*stela.Client
 	subscribers   map[string][]*stela.Client // Store clients that subscribe to a service name
 	muServices    sync.RWMutex               // Mutex used to lock services map
 	muSubscribers sync.RWMutex               // Mutex used to lock subscriber map
 	muClients     sync.RWMutex               // Mutex used to lock client slice
-	peerStore     raft.PeerStore
-	raft          *raft.Raft
 }
 
 // byPriority is a sort interface to sort []srvWithKey slices

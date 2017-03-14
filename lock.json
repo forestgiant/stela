@@ -1,0 +1,131 @@
+{
+    "memo": "c5eebe897aa0f372a5fb2b521925fb3efc5a5db71cc710f55e8466061834d2a3",
+    "projects": [
+        {
+            "name": "github.com/forestgiant/disco",
+            "branch": "master",
+            "revision": "5d8bee0082cc59c40776dc0186a96a2d5e5d9185",
+            "packages": [
+                ".",
+                "multicast",
+                "node"
+            ]
+        },
+        {
+            "name": "github.com/forestgiant/grpclog",
+            "branch": "master",
+            "revision": "4b1b16a1f3ae8319cc2f38e4aa37cde6fdea1f5f",
+            "packages": [
+                "."
+            ]
+        },
+        {
+            "name": "github.com/forestgiant/log",
+            "branch": "master",
+            "revision": "d54ab7bd91fd4bd72c98964489c00653cad2ab12",
+            "packages": [
+                "."
+            ]
+        },
+        {
+            "name": "github.com/forestgiant/netutil",
+            "branch": "master",
+            "revision": "b4c1eac0cbe7869ce77b2e13b8e692668c914d20",
+            "packages": [
+                "."
+            ]
+        },
+        {
+            "name": "github.com/forestgiant/portutil",
+            "branch": "master",
+            "revision": "3c372a3abdb9916fcf53ad0f6daa8a5842302988",
+            "packages": [
+                "."
+            ]
+        },
+        {
+            "name": "github.com/forestgiant/semver",
+            "branch": "master",
+            "revision": "939ef230d0c76c1220bcd24495dc76f7437c168f",
+            "packages": [
+                "."
+            ]
+        },
+        {
+            "name": "github.com/go-logfmt/logfmt",
+            "branch": "master",
+            "revision": "390ab7935ee28ec6b286364bba9b4dd6410cb3d5",
+            "packages": [
+                "."
+            ]
+        },
+        {
+            "name": "github.com/golang/protobuf",
+            "branch": "master",
+            "revision": "8ee79997227bf9b34611aee7946ae64735e6fd93",
+            "packages": [
+                "proto"
+            ]
+        },
+        {
+            "name": "github.com/kr/logfmt",
+            "branch": "master",
+            "revision": "b84e30acd515aadc4b783ad4ff83aff3299bdfe0",
+            "packages": [
+                "."
+            ]
+        },
+        {
+            "name": "golang.org/x/net",
+            "branch": "master",
+            "revision": "da2b4fa28524a3baf148c1b94df4440267063c88",
+            "packages": [
+                "bpf",
+                "context",
+                "http2",
+                "http2/hpack",
+                "idna",
+                "internal/iana",
+                "internal/netreflect",
+                "internal/timeseries",
+                "ipv6",
+                "lex/httplex",
+                "trace"
+            ]
+        },
+        {
+            "name": "golang.org/x/text",
+            "branch": "master",
+            "revision": "44f4f658a783b0cee41fe0a23b8fc91d9c120558",
+            "packages": [
+                "internal/gen",
+                "internal/triegen",
+                "internal/ucd",
+                "secure/bidirule",
+                "transform",
+                "unicode/bidi",
+                "unicode/cldr",
+                "unicode/norm",
+                "unicode/rangetable"
+            ]
+        },
+        {
+            "name": "google.golang.org/grpc",
+            "branch": "master",
+            "revision": "85497e2c516cd289bce5551b840ee27c2a0d6878",
+            "packages": [
+                ".",
+                "codes",
+                "credentials",
+                "grpclog",
+                "internal",
+                "metadata",
+                "naming",
+                "peer",
+                "stats",
+                "tap",
+                "transport"
+            ]
+        }
+    ]
+}

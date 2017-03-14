@@ -1,0 +1,31 @@
+{
+    "dependencies": {
+        "github.com/forestgiant/disco": {
+            "branch": "master"
+        },
+        "github.com/forestgiant/grpclog": {
+            "branch": "master"
+        },
+        "github.com/forestgiant/log": {
+            "branch": "master"
+        },
+        "github.com/forestgiant/netutil": {
+            "branch": "master"
+        },
+        "github.com/forestgiant/portutil": {
+            "branch": "master"
+        },
+        "github.com/forestgiant/semver": {
+            "branch": "master"
+        },
+        "github.com/golang/protobuf": {
+            "branch": "master"
+        },
+        "golang.org/x/net": {
+            "branch": "master"
+        },
+        "google.golang.org/grpc": {
+            "branch": "master"
+        }
+    }
+}

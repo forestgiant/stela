@@ -5,11 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/gob"
 	"fmt"
-	"net"
 	"sync"
 	"time"
-
-	"github.com/miekg/dns"
 )
 
 const (
@@ -135,41 +132,6 @@ func (s *Service) IPv4Address() string {
 // IPv6Address helper to combine IPv4 and Port
 func (s *Service) IPv6Address() string {
 	return fmt.Sprintf("%s:%d", s.IPv6, s.Port)
-}
-
-// NewSRV is convenience method added to Service to easily return new SRV record
-func (s *Service) NewSRV() *dns.SRV {
-	target := dns.Fqdn(s.Hostname)  // hostname of the machine providing the service, ending in a dot.
-	serviceName := dns.Fqdn(s.Name) // domain name for which this record is valid, ending in a dot.
-
-	SRV := new(dns.SRV)
-
-	SRV.Hdr = dns.RR_Header{
-		Name:   serviceName,
-		Rrtype: dns.TypeSRV,
-		Class:  dns.ClassINET,
-		Ttl:    86400}
-	SRV.Priority = uint16(0)
-	SRV.Weight = uint16(0)
-	SRV.Port = uint16(s.Port)
-	SRV.Target = target
-
-	return SRV
-}
-
-// NewA is convenience method added to Service to easily return new A record
-func (s *Service) NewA(ip net.IP) dns.RR {
-	serviceName := dns.Fqdn(s.Hostname) // domain name for which this record is valid, ending in a dot.
-
-	A := new(dns.A)
-	A.Hdr = dns.RR_Header{
-		Name:   serviceName,
-		Rrtype: dns.TypeA,
-		Class:  dns.ClassINET,
-		Ttl:    86400}
-	A.A = ip
-
-	return A
 }
 
 // Client struct holds all the information about a client registering a service

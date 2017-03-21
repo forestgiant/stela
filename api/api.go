@@ -231,8 +231,10 @@ func (c *Client) Register(ctx context.Context, s *stela.Service) error {
 
 // Deregister deregisters a service to the stela instance the client is connected to.
 func (c *Client) Deregister(ctx context.Context, s *stela.Service) error {
-	// s.IPv4 = c.Address
 	s.Hostname = c.Hostname
+	if s.IPv4 == "" {
+		s.IPv4 = c.Address
+	}
 	_, err := c.rpc.Deregister(ctx,
 		&pb.RegisterRequest{
 			ClientId: c.ID,

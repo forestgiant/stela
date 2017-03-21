@@ -268,6 +268,10 @@ func TestDeregister(t *testing.T) {
 			IPv4:     "127.0.0.1",
 			Port:     10000,
 		},
+		&stela.Service{
+			Name: serviceName,
+			Port: 10002,
+		},
 	}
 
 	// Register all the services

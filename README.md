@@ -1,5 +1,10 @@
-# Stela
-A microservice used for discovery of services with gRPC. Stela uses IPv6 multicast to allow for scalable, distributed discovery on premises.  The project is named after the [stone monuments](https://en.wikipedia.org/wiki/Stela) of the same name.
+![Stela](https://dl.dropboxusercontent.com/s/gvgjb957qfczlul/fg-github-stela.png "Stela logo")
+
+![Docs](https://dl.dropboxusercontent.com/s/94r940hpxv1z17f/github-button-stela.png "Stela API Docs")
+![Gitter](https://dl.dropboxusercontent.com/s/j38ui4m1vwhb7qq/github-button-chat.png "Stela on Gitter")
+-------
+
+Stela is a microservice used for discovery of services with gRPC. It uses IPv6 multicast to allow for scalable, distributed discovery on premises.  The project is named after the [stone monuments](https://en.wikipedia.org/wiki/Stela) of the same name.
 
 ### Features
 * **Distributed** run one or many Stela instances on any number of computers. 

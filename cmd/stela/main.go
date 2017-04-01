@@ -93,12 +93,19 @@ func main() {
 		Timeout: 1 * time.Second,
 	}
 
+	// Get network address
+	networkAddr, err := netutil.ConvertToLocalIPv4(stelaAddr)
+	if err != nil {
+		logger.Error("netutil failed to convert to local ipv4:", "error", err.Error())
+		os.Exit(1)
+	}
+
 	// Setup disco and listen for other stela instances
 	multicastAddr := fmt.Sprintf("%s:%d", stela.DefaultMulticastAddress, *multicastPortPtr)
 	d := &disco.Disco{}
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
-	// Start discovering
+	// Start discovering other stelas
 	discoveredChan, err := d.Discover(ctx, multicastAddr)
 	if err != nil {
 		logger.Error("error", err.Error())
@@ -116,16 +123,9 @@ func main() {
 		}
 	}()
 
-	// Register ourselves as a node
-	networkAddr, err := netutil.ConvertToLocalIPv4(stelaAddr)
-	if err != nil {
-		logger.Error("netutil failed to convert to local ipv4:", "error", err.Error())
-		os.Exit(1)
-	}
-
-	n := &node.Node{Payload: []byte(networkAddr), SendInterval: 2 * time.Second}
-	if err := n.Multicast(ctx, multicastAddr); err != nil {
-		logger.Error("node multicast failed:", "error", err.Error())
+	// Register ourselves as a service
+	if err := registerStela(m, networkAddr); err != nil {
+		logger.Error("error", err.Error(), stelaAddr)
 		os.Exit(1)
 	}
 
@@ -186,9 +186,10 @@ func main() {
 	}()
 	runtime.Gosched()
 
-	// Now register ourselves as a service
-	if err := registerStela(m, networkAddr); err != nil {
-		logger.Error("error", err.Error(), stelaAddr)
+	// Use disco to tell other stelas about us
+	n := &node.Node{Payload: []byte(networkAddr), SendInterval: 2 * time.Second}
+	if err := n.Multicast(ctx, multicastAddr); err != nil {
+		logger.Error("node multicast failed:", "error", err.Error())
 		os.Exit(1)
 	}
 

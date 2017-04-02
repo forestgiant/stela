@@ -218,11 +218,8 @@ func (s *Server) peerNotify(service *stela.Service) error {
 		return err
 	}
 
-	wg := &sync.WaitGroup{}
-	wg.Add(len(s.peers))
 	for _, p := range s.peers {
 		go func(p *node.Node) {
-			defer wg.Done()
 			// Create context with timeout
 			ctx, cancelFunc := context.WithTimeout(context.Background(), s.Timeout)
 			defer cancelFunc()
@@ -271,7 +268,6 @@ func (s *Server) peerNotify(service *stela.Service) error {
 			}
 		}(p)
 	}
-	wg.Wait()
 
 	return nil
 }
@@ -401,10 +397,6 @@ func (s *Server) Discover(ctx context.Context, req *pb.DiscoverRequest) (*pb.Dis
 	for _, p := range s.peers {
 		go func(p *node.Node) {
 			defer wg.Done()
-
-			// Create context with timeout
-			ctx, cancelFunc := context.WithTimeout(ctx, s.Timeout)
-			defer cancelFunc()
 			waitCh := make(chan struct{})
 
 			go func() {
@@ -463,9 +455,6 @@ func (s *Server) DiscoverRegex(ctx context.Context, req *pb.DiscoverRequest) (*p
 		go func(p *node.Node) {
 			defer wg.Done()
 
-			// Create context with timeout
-			ctx, cancelFunc := context.WithTimeout(ctx, s.Timeout)
-			defer cancelFunc()
 			waitCh := make(chan struct{})
 
 			go func() {
@@ -525,9 +514,6 @@ func (s *Server) DiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (*pb.
 		go func(p *node.Node) {
 			defer wg.Done()
 
-			// Create context with timeout
-			ctx, cancelFunc := context.WithTimeout(ctx, s.Timeout)
-			defer cancelFunc()
 			waitCh := make(chan struct{})
 
 			go func() {
@@ -597,9 +583,6 @@ func (s *Server) DiscoverAll(ctx context.Context, req *pb.DiscoverAllRequest) (*
 		go func(p *node.Node) {
 			defer wg.Done()
 
-			// Create context with timeout
-			ctx, cancelFunc := context.WithTimeout(ctx, s.Timeout)
-			defer cancelFunc()
 			waitCh := make(chan struct{})
 
 			go func() {

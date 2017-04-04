@@ -391,16 +391,15 @@ func (s *Server) Discover(ctx context.Context, req *pb.DiscoverRequest) (*pb.Dis
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
+	waitCh := make(chan struct{})
 
 	var results []*pb.ServiceMessage
 	var mu sync.Mutex
-	for _, p := range s.peers {
-		go func(p *node.Node) {
-			defer wg.Done()
-			waitCh := make(chan struct{})
 
-			go func() {
-				defer close(waitCh)
+	go func() {
+		for _, p := range s.peers {
+			go func(p *node.Node) {
+				defer wg.Done()
 
 				address := string(p.Payload)
 				address, err := convertToLocalIP(address)
@@ -423,18 +422,20 @@ func (s *Server) Discover(ctx context.Context, req *pb.DiscoverRequest) (*pb.Dis
 				mu.Lock()
 				defer mu.Unlock()
 				results = append(results, resp.Services...)
-			}()
+			}(p)
+		}
 
-			// Block until the context times out or the client is notified
-			select {
-			case <-waitCh:
-				return
-			case <-ctx.Done():
-				return
-			}
-		}(p)
+		wg.Wait()
+		close(waitCh)
+	}()
+
+	// Block until the context times out or the client is notified
+	select {
+	case <-waitCh:
+		break
+	case <-ctx.Done():
+		break
 	}
-	wg.Wait()
 
 	return &pb.DiscoverResponse{Services: results}, nil
 }
@@ -448,17 +449,15 @@ func (s *Server) DiscoverRegex(ctx context.Context, req *pb.DiscoverRequest) (*p
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
+	waitCh := make(chan struct{})
 
 	var results []*pb.ServiceMessage
 	var mu sync.Mutex
-	for _, p := range s.peers {
-		go func(p *node.Node) {
-			defer wg.Done()
 
-			waitCh := make(chan struct{})
-
-			go func() {
-				defer close(waitCh)
+	go func() {
+		for _, p := range s.peers {
+			go func(p *node.Node) {
+				defer wg.Done()
 
 				address := string(p.Payload)
 				address, err := convertToLocalIP(address)
@@ -481,18 +480,20 @@ func (s *Server) DiscoverRegex(ctx context.Context, req *pb.DiscoverRequest) (*p
 				mu.Lock()
 				defer mu.Unlock()
 				results = append(results, resp.Services...)
-			}()
+			}(p)
+		}
 
-			// Block until the context times out or the client is notified
-			select {
-			case <-waitCh:
-				return
-			case <-ctx.Done():
-				return
-			}
-		}(p)
+		wg.Wait()
+		close(waitCh)
+	}()
+
+	// Block until the context times out or the client is notified
+	select {
+	case <-waitCh:
+		break
+	case <-ctx.Done():
+		break
 	}
-	wg.Wait()
 
 	return &pb.DiscoverResponse{Services: results}, nil
 }
@@ -507,17 +508,16 @@ func (s *Server) DiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (*pb.
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
+	waitCh := make(chan struct{})
 
 	var results []*pb.ServiceMessage
 	var mu sync.Mutex
-	for _, p := range s.peers {
-		go func(p *node.Node) {
-			defer wg.Done()
 
-			waitCh := make(chan struct{})
+	go func() {
+		for _, p := range s.peers {
+			go func(p *node.Node) {
+				defer wg.Done()
 
-			go func() {
-				defer close(waitCh)
 				address := string(p.Payload)
 				address, err := convertToLocalIP(address)
 				if err != nil {
@@ -539,18 +539,20 @@ func (s *Server) DiscoverOne(ctx context.Context, req *pb.DiscoverRequest) (*pb.
 				mu.Lock()
 				defer mu.Unlock()
 				results = append(results, resp)
-			}()
+			}(p)
+		}
 
-			// Block until the context times out or the client is notified
-			select {
-			case <-waitCh:
-				return
-			case <-ctx.Done():
-				return
-			}
-		}(p)
+		wg.Wait()
+		close(waitCh)
+	}()
+
+	// Block until the context times out or the client is notified
+	select {
+	case <-waitCh:
+		break
+	case <-ctx.Done():
+		break
 	}
-	wg.Wait()
 
 	// Give back a random result
 	if len(results) < 1 {
@@ -576,17 +578,16 @@ func (s *Server) DiscoverAll(ctx context.Context, req *pb.DiscoverAllRequest) (*
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(s.peers))
+	waitCh := make(chan struct{})
 
 	var results []*pb.ServiceMessage
 	var mu sync.Mutex
-	for _, p := range s.peers {
-		go func(p *node.Node) {
-			defer wg.Done()
 
-			waitCh := make(chan struct{})
+	go func() {
+		for _, p := range s.peers {
+			go func(p *node.Node) {
+				defer wg.Done()
 
-			go func() {
-				defer close(waitCh)
 				address := string(p.Payload)
 				address, err := convertToLocalIP(address)
 				if err != nil {
@@ -608,18 +609,20 @@ func (s *Server) DiscoverAll(ctx context.Context, req *pb.DiscoverAllRequest) (*
 				mu.Lock()
 				defer mu.Unlock()
 				results = append(results, resp.Services...)
-			}()
+			}(p)
+		}
 
-			// Block until the context times out or the client is notified
-			select {
-			case <-waitCh:
-				return
-			case <-ctx.Done():
-				return
-			}
-		}(p)
+		wg.Wait()
+		close(waitCh)
+	}()
+
+	// Block until the context times out or the client is notified
+	select {
+	case <-waitCh:
+		break
+	case <-ctx.Done():
+		break
 	}
-	wg.Wait()
 
 	return &pb.DiscoverResponse{Services: results}, nil
 }

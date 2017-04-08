@@ -53,7 +53,7 @@ func NewClient(ctx context.Context, stelaAddress string, opts []grpc.DialOption)
 	}
 	opts = append(opts, grpc.FailOnNonTempDialError(true))
 	opts = append(opts, grpc.WithBlock())
-	c.conn, err = grpc.Dial(stelaAddress, opts...)
+	c.conn, err = grpc.DialContext(ctx, stelaAddress, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -350,6 +350,7 @@ func (c *Client) DiscoverAll(ctx context.Context) ([]*stela.Service, error) {
 
 // Close cancels the stream to the gRPC stream established by connect().
 func (c *Client) Close() {
-
-	c.conn.Close()
+	if c != nil && c.conn != nil {
+		c.conn.Close()
+	}
 }

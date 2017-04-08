@@ -64,6 +64,35 @@ func run(m *testing.M) (exitCode int) {
 	return t
 }
 
+func TestNewClient(t *testing.T) {
+	var tests = []struct {
+		address    string
+		shouldFail bool
+	}{
+		{"127.0.0.1:10", false},
+		{fmt.Sprintf("127.0.0.1:%d", stelaTestPort), true},
+	}
+
+	for _, test := range tests {
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+		var c *Client
+		var err error
+		if insecure {
+			c, err = NewClient(ctx, test.address, nil)
+			if (err != nil) == test.shouldFail {
+				t.Fatal(err)
+			}
+		} else {
+			c, err = NewTLSClient(ctx, test.address, stela.DefaultServerName, clientCertPath, clientKeyPath, caPath)
+			if (err != nil) == test.shouldFail {
+				t.Fatal(err)
+			}
+		}
+		defer c.Close()
+	}
+}
+
 func TestRegisterAndDiscover(t *testing.T) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()

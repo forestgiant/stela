@@ -113,14 +113,18 @@ func NewTLSClient(ctx context.Context, serverAddress string, serverName string, 
 }
 
 func (c *Client) init() {
+	c.mu.Lock()
 	if c.callbacks == nil {
 		c.callbacks = make(map[string]func(s *stela.Service))
 	}
+	c.mu.Unlock()
 }
 
 func (c *Client) connect() error {
 	ctx, cancelFunc := context.WithCancel(context.Background())
+	c.mu.RLock()
 	stream, err := c.rpc.Connect(ctx, &pb.ConnectRequest{ClientId: c.ID})
+	c.mu.RUnlock()
 	if err != nil {
 		return err
 	}
@@ -138,8 +142,8 @@ func (c *Client) connect() error {
 			}
 
 			// Send service to callback if any subscribed
+			c.mu.RLock()
 			if c.callbacks != nil {
-				c.mu.RLock()
 				c.callbacks[rs.Name](&stela.Service{
 					Name:     rs.Name,
 					Hostname: rs.Hostname,
@@ -150,8 +154,8 @@ func (c *Client) connect() error {
 					Action:   rs.Action,
 					Value:    rs.Value,
 				})
-				c.mu.RUnlock()
 			}
+			c.mu.RUnlock()
 		}
 	}()
 
@@ -160,11 +164,13 @@ func (c *Client) connect() error {
 
 // Subscribe stores a callback to the service name and notifies the stela instance to notify your client on changes.
 func (c *Client) Subscribe(ctx context.Context, serviceName string, callback func(s *stela.Service)) error {
+	c.mu.RLock()
 	_, err := c.rpc.Subscribe(ctx,
 		&pb.SubscribeRequest{
 			ClientId:    c.ID,
 			ServiceName: serviceName,
 		})
+	c.mu.RUnlock()
 	if err != nil {
 		return err
 	}
@@ -173,8 +179,8 @@ func (c *Client) Subscribe(ctx context.Context, serviceName string, callback fun
 
 	// Store callback
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	c.callbacks[serviceName] = callback
+	c.mu.Unlock()
 
 	return nil
 }
@@ -182,29 +188,36 @@ func (c *Client) Subscribe(ctx context.Context, serviceName string, callback fun
 // Unsubscribe removes the callback to the service name and let's the stela instance know the client
 // doesn't want updates on that serviceName.
 func (c *Client) Unsubscribe(ctx context.Context, serviceName string) error {
+	c.mu.RLock()
 	if c.callbacks == nil {
+		c.mu.RUnlock()
 		return errors.New("Client hasn't subscribed")
 	}
+	c.mu.RUnlock()
 
+	c.mu.RLock()
 	_, err := c.rpc.Unsubscribe(ctx,
 		&pb.SubscribeRequest{
 			ClientId:    c.ID,
 			ServiceName: serviceName,
 		})
+	c.mu.RUnlock()
 	if err != nil {
 		return err
 	}
 
 	// Delete callback
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	delete(c.callbacks, serviceName)
+	c.mu.Unlock()
 
 	return nil
 }
 
 // Register registers a service to the stela instance the client is connected to.
 func (c *Client) Register(ctx context.Context, s *stela.Service) error {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	s.Hostname = c.Hostname
 	if s.IPv4 == "" {
 		s.IPv4 = c.Address
@@ -231,10 +244,13 @@ func (c *Client) Register(ctx context.Context, s *stela.Service) error {
 
 // Deregister deregisters a service to the stela instance the client is connected to.
 func (c *Client) Deregister(ctx context.Context, s *stela.Service) error {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	s.Hostname = c.Hostname
 	if s.IPv4 == "" {
 		s.IPv4 = c.Address
 	}
+
 	_, err := c.rpc.Deregister(ctx,
 		&pb.RegisterRequest{
 			ClientId: c.ID,
@@ -351,6 +367,8 @@ func (c *Client) DiscoverAll(ctx context.Context) ([]*stela.Service, error) {
 // Close cancels the stream to the gRPC stream established by connect().
 func (c *Client) Close() {
 	if c != nil && c.conn != nil {
+		c.mu.Lock()
 		c.conn.Close()
+		c.mu.Unlock()
 	}
 }

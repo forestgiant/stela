@@ -72,7 +72,7 @@ func main() {
 	flag.Parse()
 
 	if *statusPtr {
-		stelas, err := discoverStelas(*insecurePtr, *serverNamePtr, *certPathPtr, *keyPathPtr, *serverNamePtr)
+		stelas, err := discoverStelas(*insecurePtr, *certPathPtr, *keyPathPtr, *caPathPtr, *serverNamePtr)
 		if err != nil {
 			fmt.Println("There are 0 stela instances currently running. Make sure you are running a local stela instance.")
 		} else {

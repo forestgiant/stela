@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"syscall"
 	"time"
@@ -19,13 +20,10 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/forestgiant/netutil"
-	"github.com/forestgiant/semver"
-
-	"runtime"
-
 	"github.com/forestgiant/disco"
 	"github.com/forestgiant/disco/node"
+	"github.com/forestgiant/netutil"
+	"github.com/forestgiant/semver"
 	"github.com/forestgiant/stela"
 	"github.com/forestgiant/stela/api"
 	"github.com/forestgiant/stela/pb"
@@ -100,7 +98,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Setup disco and listen for other stela instances
+	// // Setup disco and listen for other stela instances
 	multicastAddr := fmt.Sprintf("%s:%d", stela.DefaultMulticastAddress, *multicastPortPtr)
 	d := &disco.Disco{}
 	ctx, cancelFunc := context.WithCancel(context.Background())
@@ -111,6 +109,9 @@ func main() {
 		logger.Error("error", err.Error())
 		os.Exit(1)
 	}
+
+	// Set the initial peer list to only our instance
+	t.SetPeers([]*node.Node{&node.Node{Payload: []byte(stelaAddr)}})
 
 	// When a `Node` is discovered update the transport peers
 	go func() {
@@ -186,12 +187,8 @@ func main() {
 	}()
 	runtime.Gosched()
 
-	// Use disco to tell other stelas about us
-	n := &node.Node{Payload: []byte(networkAddr), SendInterval: 2 * time.Second}
-	if err := n.Multicast(ctx, multicastAddr); err != nil {
-		logger.Error("node multicast failed:", "error", err.Error())
-		os.Exit(1)
-	}
+	// Multicast stela if there is a valid ipv6 address
+	go multicastStela(ctx, d, *multicastPortPtr)
 
 	// Listen for shutdown signal
 	sigs := make(chan os.Signal, 1)
@@ -210,6 +207,28 @@ func main() {
 		logger.Info("Closing stela")
 		return
 	}
+}
+
+func multicastStela(ctx context.Context, d *disco.Disco, multicastPort int) error {
+	// Block until we get a valid IP
+	stelaAddr, err := findIP(10)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	// Setup disco and listen for other stela instances
+	multicastAddr := fmt.Sprintf("%s:%d", stela.DefaultMulticastAddress, multicastPort)
+
+	// Use disco to tell other stelas about us
+	n := &node.Node{Payload: []byte(stelaAddr), SendInterval: 2 * time.Second}
+	if err := n.Multicast(ctx, multicastAddr); err != nil {
+		return err
+	}
+
+	fmt.Println(stelaAddr)
+
+	return nil
 }
 
 func registerStela(s store.Store, networkAddr string) error {
@@ -258,4 +277,31 @@ func discoverStelas(insecure bool, certPath, keyPath, caFile, serverNameOverride
 	}
 
 	return stelas, nil
+}
+
+func findIP(timeoutSecs int) (string, error) {
+	startTime := time.Now()
+	elapsedTime := time.Since(startTime)
+	timeout := time.Second * time.Duration(timeoutSecs)
+	ip := ipv6AddressNoLoopBack()
+	for len(ip) == 0 && elapsedTime < timeout {
+		fmt.Println("loop?")
+		ip = ipv6AddressNoLoopBack()
+		elapsedTime = time.Since(startTime)
+	}
+
+	if len(ip) == 0 {
+		return "", fmt.Errorf("Unable to find your ip in %d seconds", timeoutSecs)
+	}
+
+	return netutil.LocalIPv4().String(), nil
+}
+
+func ipv6AddressNoLoopBack() string {
+	ip := netutil.LocalIPv6()
+	if ip.Equal(net.IPv6loopback) {
+		return ""
+	}
+
+	return ip.String()
 }

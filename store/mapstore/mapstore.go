@@ -50,7 +50,7 @@ func (m *MapStore) Register(s *stela.Service) error {
 		return fmt.Errorf("%v is already registered", s)
 	}
 
-	// Rotate before the other services adding the new service
+	// Rotate before the other services add the new service
 	m.rotateServices(s.Name)
 
 	// Set all new incoming services Priority to 0
@@ -161,7 +161,9 @@ func (m *MapStore) Unsubscribe(serviceName string, c *stela.Client) error {
 
 // Discover finds all services registered under a serviceName
 func (m *MapStore) Discover(serviceName string) ([]*stela.Service, error) {
+	m.muServices.RLock()
 	results := m.services[serviceName]
+	m.muServices.RUnlock()
 	if len(results) == 0 {
 		return nil, fmt.Errorf("No services discovered with the service name: %s", serviceName)
 	}
@@ -179,11 +181,14 @@ func (m *MapStore) DiscoverRegex(reg string) ([]*stela.Service, error) {
 	if err != nil {
 		return nil, fmt.Errorf("No services discovered with the regex: %s", reg)
 	}
+
+	m.muServices.RLock()
 	for k, v := range m.services {
 		if r.MatchString(k) {
 			results = append(results, v...)
 		}
 	}
+	m.muServices.RUnlock()
 
 	if len(results) == 0 {
 		return nil, fmt.Errorf("No services discovered with the regex: %s", reg)
@@ -215,10 +220,10 @@ func (m *MapStore) DiscoverOne(serviceName string) (*stela.Service, error) {
 func (m *MapStore) DiscoverAll() []*stela.Service {
 	var all []*stela.Service
 	m.muServices.RLock()
-	defer m.muServices.RUnlock()
 	for _, v := range m.services {
 		all = append(all, v...)
 	}
+	m.muServices.RUnlock()
 
 	return all
 }
@@ -283,26 +288,22 @@ func (m *MapStore) RemoveClient(c *stela.Client) {
 
 // ServicesByClient returns all services a client has registered
 func (m *MapStore) ServicesByClient(c *stela.Client) []*stela.Service {
-	m.muServices.Lock()
-	defer m.muServices.Unlock()
-
 	var clientServices []*stela.Service
 
-	// Remove any services the client registered
+	m.muServices.RLock()
+	// Find any service the client registered
 	for _, services := range m.services {
-		// Remove any services that the client registered
 		for i := len(services) - 1; i >= 0; i-- {
 			s := services[i]
 			if s == nil || s.Client == nil {
-				// return errors.New("service or client are nil")
 				continue
 			}
 			if s.Client.Equal(c) {
-				// Remove from slice
 				clientServices = append(clientServices, s)
 			}
 		}
 	}
+	m.muServices.RUnlock()
 
 	return clientServices
 }
@@ -351,8 +352,8 @@ func (m *MapStore) Client(id string) (*stela.Client, error) {
 
 func (m *MapStore) hasService(s *stela.Service) bool {
 	m.init()
-	m.muServices.Lock()
-	defer m.muServices.Unlock()
+	m.muServices.RLock()
+	defer m.muServices.RUnlock()
 	for _, rs := range m.services[s.Name] {
 		if s.Equal(rs) {
 			return true // service is already a registered
@@ -375,18 +376,17 @@ func (m *MapStore) hasClient(c *stela.Client) bool {
 	return false
 }
 
-// TODO remove addingService and make sure to prepend to service map
+// rotateServices updates service priority
 func (m *MapStore) rotateServices(serviceName string) error {
 	// Use length of all services to modulate priority
 	mod := int32(len(m.services[serviceName]))
 
 	// Now update all the Priorities
 	m.muServices.Lock()
-	defer m.muServices.Unlock()
 	for i, s := range m.services[serviceName] {
 		// Update SRV priority
 		m.services[serviceName][i].Priority = (s.Priority + 1) % mod
 	}
-
+	m.muServices.Unlock()
 	return nil
 }

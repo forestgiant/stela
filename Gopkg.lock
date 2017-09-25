@@ -5,7 +5,7 @@
   branch = "master"
   name = "github.com/forestgiant/disco"
   packages = [".","multicast","node"]
-  revision = "49bea7683a61a97d5f58909d07513d2c347595c2"
+  revision = "ff49d595e5a74d4e9fa09a86ea158a3e741c1d54"
 
 [[projects]]
   branch = "master"

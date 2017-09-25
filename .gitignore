@@ -6,5 +6,7 @@ logs
 *.out
 *.crt
 *.key
+vendor
 examples/membership/membership
 cmd/stelawd/stelawd
+cmd/stelacli/stelacli

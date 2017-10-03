@@ -11,7 +11,7 @@ import (
 
 const (
 	// Version of stela
-	Version = "0.11.5"
+	Version = "0.11.6"
 
 	// DefaultStelaAddress by default stela assumes there is a local instance running
 	DefaultStelaAddress = "127.0.0.1:31000"

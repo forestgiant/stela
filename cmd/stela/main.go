@@ -126,6 +126,18 @@ func main() {
 	n := &node.Node{Payload: []byte(networkAddr), SendInterval: 2 * time.Second}
 	multicastErrCh := n.Multicast(ctx, multicastAddr)
 
+	// Log any multicast errors
+	go func() {
+		for {
+			select {
+			case err := <-multicastErrCh:
+				fmt.Println(err)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
 	//Setup gRPC server
 	listener, err := net.Listen("tcp", stelaAddr)
 	if err != nil {
@@ -194,8 +206,6 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		select {
-		case err := <-multicastErrCh:
-			logger.Error("node multicast failed:", "error", err.Error())
 		case <-sigs:
 			cancelFunc()
 		}

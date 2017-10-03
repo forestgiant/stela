@@ -5,7 +5,7 @@
   branch = "master"
   name = "github.com/forestgiant/disco"
   packages = [".","multicast","node"]
-  revision = "ff49d595e5a74d4e9fa09a86ea158a3e741c1d54"
+  revision = "72c7af3ba0826d2251e7c208756567789c5e0812"
 
 [[projects]]
   branch = "master"
@@ -59,7 +59,7 @@
   branch = "master"
   name = "golang.org/x/net"
   packages = ["bpf","context","http2","http2/hpack","idna","internal/iana","internal/socket","internal/timeseries","ipv6","lex/httplex","trace"]
-  revision = "0744d001aa8470aaa53df28d32e5ceeb8af9bd70"
+  revision = "0a9397675ba34b2845f758fe3cd68828369c6517"
 
 [[projects]]
   branch = "master"
@@ -71,7 +71,7 @@
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "1e559d0a00eef8a9a43151db4665280bd8dd5886"
+  revision = "f676e0f3ac6395ff1a529ae59a6670878a8371a6"
 
 [[projects]]
   name = "google.golang.org/grpc"
